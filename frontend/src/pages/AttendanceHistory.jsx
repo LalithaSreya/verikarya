@@ -38,11 +38,24 @@ export const AttendanceHistory = () => {
     return new Date(dateStr).toLocaleDateString([], { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  let backendUrl = import.meta.env.VITE_BACKEND_URL;
-  if (!backendUrl) {
+  const cleanUrl = (url, removeSuffix = '') => {
+    if (!url) return url;
+    let cleaned = url.replace(/^(https?:\/\/)+/, (match) => match.includes('https') ? 'https://' : 'http://');
+    if (removeSuffix && cleaned.endsWith(removeSuffix)) {
+      cleaned = cleaned.slice(0, -removeSuffix.length);
+    }
+    if (cleaned.endsWith('/')) {
+      cleaned = cleaned.slice(0, -1);
+    }
+    return cleaned;
+  };
+
+  let backendUrl = cleanUrl(import.meta.env.VITE_BACKEND_URL, '/api');
+
+  if (!backendUrl || backendUrl.startsWith('http://localhost') || backendUrl.startsWith('http://127.0.0.1')) {
     if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       backendUrl = 'https://verikarya.onrender.com';
-    } else {
+    } else if (!backendUrl) {
       backendUrl = 'http://localhost:5000';
     }
   }
