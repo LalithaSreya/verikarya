@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "mobile",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.verikarya.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "VeriKarya requires camera access to capture face verification snapshots when punching attendance or submitting task evidence.",
+        "NSLocationWhenInUseUsageDescription": "VeriKarya requires GPS location access to check if you are within the circular geofence of target field client sites."
+      }
+    },
+    "android": {
+      "package": "com.verikarya.mobile",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#2563EB",
+        "foregroundImage": "./assets/adaptive-icon.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
