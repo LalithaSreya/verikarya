@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { GoogleLogin } from '@react-oauth/google';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('employee'); // 'employee' | 'manager'
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { login, isAuthenticated } = useAuth();
+  const { login, loginWithGoogle, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   // If already authenticated, redirect immediately
@@ -43,6 +45,27 @@ export const Login = () => {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setSubmitting(true);
+    try {
+      const res = await loginWithGoogle(credentialResponse.credential, role);
+      if (res.success) {
+        navigate('/');
+      } else {
+        setError(res.error || 'Google Login failed. Please check your credentials.');
+      }
+    } catch (err) {
+      setError('Server connection error. Please try again later.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError('Google Authentication failed. Please try again.');
+  };
+
   return (
     <div className="login-page">
       <div className="login-card">
@@ -52,6 +75,28 @@ export const Login = () => {
           <p className="text-muted" style={{ fontSize: '0.85rem', textAlign: 'center' }}>
             Workforce Verification & Performance Management System
           </p>
+        </div>
+
+        {/* Role Selector Tabs */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: 'var(--spacing-lg)' }}>
+          <button
+            type="button"
+            className={role === 'employee' ? 'btn btn-primary' : 'btn btn-outline'}
+            style={{ flex: 1, fontSize: '0.85rem', padding: '8px 12px' }}
+            onClick={() => setRole('employee')}
+            disabled={submitting}
+          >
+            🧑‍💼 Employee Login
+          </button>
+          <button
+            type="button"
+            className={role === 'manager' ? 'btn btn-primary' : 'btn btn-outline'}
+            style={{ flex: 1, fontSize: '0.85rem', padding: '8px 12px' }}
+            onClick={() => setRole('manager')}
+            disabled={submitting}
+          >
+            💼 Manager Login
+          </button>
         </div>
 
         {error && (
@@ -114,6 +159,24 @@ export const Login = () => {
             {submitting ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+
+        <div style={{ display: 'flex', alignItems: 'center', margin: 'var(--spacing-md) 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+          <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }}></div>
+          <span style={{ padding: '0 var(--spacing-sm)' }}>or</span>
+          <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-color)' }}></div>
+        </div>
+
+        {/* Google OAuth Login Button */}
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            text="signin_with"
+            shape="rectangular"
+            theme="outline"
+            width="100%"
+          />
+        </div>
 
         <div style={{ marginTop: 'var(--spacing-lg)', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
           <p>Demo Logins:</p>

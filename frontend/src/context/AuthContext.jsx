@@ -52,6 +52,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Login with Google
+  const loginWithGoogle = async (googleToken, role) => {
+    try {
+      const res = await api.post('/api/auth/google', { token: googleToken, role });
+      
+      if (res.data.success) {
+        localStorage.setItem('verikarya_token', res.data.token);
+        setUser(res.data.user);
+        return { success: true };
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Google authentication failed';
+      return { success: false, error: errorMsg };
+    }
+  };
+
   // Logout User
   const logout = () => {
     localStorage.removeItem('verikarya_token');
@@ -74,6 +90,7 @@ export const AuthProvider = ({ children }) => {
         user,
         loading,
         login,
+        loginWithGoogle,
         logout,
         updateOfficeLocationState,
         isAuthenticated: !!user,

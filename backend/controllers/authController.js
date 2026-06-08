@@ -158,9 +158,78 @@ const updateOfficeLocation = async (req, res) => {
   }
 };
 
+// @desc    Google login
+// @route   POST /api/auth/google
+// @access  Public
+const googleLogin = async (req, res) => {
+  try {
+    const { token, role } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ success: false, error: 'Google login token is required' });
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
+    const { OAuth2Client } = require('google-auth-library');
+    const oAuth2Client = new OAuth2Client(clientId);
+
+    let ticket;
+    try {
+      ticket = await oAuth2Client.verifyIdToken({
+        idToken: token,
+        audience: clientId
+      });
+    } catch (err) {
+      if (!clientId) {
+        console.warn('Google Client ID not configured. Verifying token without audience check.');
+        ticket = await oAuth2Client.verifyIdToken({
+          idToken: token
+        });
+      } else {
+        throw err;
+      }
+    }
+
+    const payload = ticket.getPayload();
+    const { email, name } = payload;
+
+    // Check if user exists
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // New user registration
+      const assignedRole = (role === 'manager' || role === 'employee') ? role : 'employee';
+      const placeholderPassword = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
+      user = await User.create({
+        name,
+        email,
+        password: placeholderPassword,
+        role: assignedRole
+      });
+    }
+
+    const jwtToken = generateToken(user._id);
+
+    res.status(200).json({
+      success: true,
+      token: jwtToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
+  googleLogin,
   getMe,
   getEmployees,
   updateOfficeLocation
