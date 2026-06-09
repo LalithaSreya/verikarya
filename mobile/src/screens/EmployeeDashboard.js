@@ -24,7 +24,7 @@ export default function EmployeeDashboard({ navigation }) {
     try {
       setLoading(true);
       // 1. Fetch attendance status
-      const attRes = await api.get('/attendance/status');
+      const attRes = await api.get('/attendance/today');
       setAttendance(attRes.data.data);
 
       // 2. Fetch tasks
@@ -60,7 +60,7 @@ export default function EmployeeDashboard({ navigation }) {
   const handleCameraCapture = async (photoBase64) => {
     setShowCamera(false);
     setPunchLoading(true);
-    setPunchMessage(cameraMode === 'in' ? 'Clocking In...' : 'Clocking Out...');
+    setPunchMessage(cameraMode === 'in' ? 'Generating Secure Code...' : 'Generating Secure Code...');
 
     try {
       // 1. Request GPS Location permissions
@@ -75,16 +75,30 @@ export default function EmployeeDashboard({ navigation }) {
       let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const { latitude, longitude } = location.coords;
 
-      // 3. Submit to backend
-      const endpoint = cameraMode === 'in' ? '/attendance/clock-in' : '/attendance/clock-out';
+      // 3. Request verification code from backend first
+      const actionType = cameraMode === 'in' ? 'checkin' : 'checkout';
+      const codeRes = await api.post('/attendance/request-code', { action: actionType });
+      if (!codeRes.data.success) {
+        alert('Failed to generate verification code.');
+        setPunchLoading(false);
+        return;
+      }
+      const verificationCode = codeRes.data.code;
+
+      // 4. Submit punch to backend
+      setPunchMessage(cameraMode === 'in' ? 'Clocking In...' : 'Clocking Out...');
+      const endpoint = cameraMode === 'in' ? '/attendance/checkin' : '/attendance/checkout';
       const res = await api.post(endpoint, {
-        lat: latitude,
-        lng: longitude,
-        photo: photoBase64
+        photo: photoBase64,
+        verificationCode,
+        location: {
+          lat: latitude,
+          lng: longitude
+        }
       });
 
       if (res.data.success) {
-        alert(`Success! Generated verification code: ${res.data.data.checkInCode || res.data.data.checkOutCode}`);
+        alert(`Success! Attendance verified. Verification code: ${verificationCode}`);
         loadDashboardData();
       }
     } catch (err) {

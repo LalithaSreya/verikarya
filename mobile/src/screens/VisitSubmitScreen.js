@@ -15,6 +15,9 @@ export default function VisitSubmitScreen({ route, navigation }) {
   const [photo, setPhoto] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [startLoading, setStartLoading] = useState(false);
+  const [bypassLoading, setBypassLoading] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
   const [showCamera, setShowCamera] = useState(false);
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -58,8 +61,16 @@ export default function VisitSubmitScreen({ route, navigation }) {
         const found = res.data.data.find(v => v._id === visitId);
         setVisit(found);
         
-        if (found && found.targetLocation) {
-          await trackUserLocation(found.targetLocation.lat, found.targetLocation.lng);
+        if (found) {
+          if (found.targetLocation) {
+            await trackUserLocation(found.targetLocation.lat, found.targetLocation.lng);
+          }
+          if (found.status === 'started') {
+            const codeRes = await api.post(`/visits/${visitId}/request-code`);
+            if (codeRes.data.success) {
+              setVerificationCode(codeRes.data.code);
+            }
+          }
         }
       } catch (err) {
         console.error('Error in fetch:', err);
@@ -72,6 +83,71 @@ export default function VisitSubmitScreen({ route, navigation }) {
     fetchVisitAndLoc();
   }, [visitId]);
 
+  const handleStartVisit = async () => {
+    setStartLoading(true);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Permission to access location was denied. Location is required.');
+        setStartLoading(false);
+        return;
+      }
+      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const { latitude, longitude } = location.coords;
+      setUserLoc({ lat: latitude, lng: longitude });
+
+      const res = await api.post(`/visits/${visitId}/start`, {
+        location: {
+          lat: latitude,
+          lng: longitude
+        }
+      });
+
+      if (res.data.success) {
+        alert('Audit visit started successfully!');
+        // Request code immediately
+        const codeRes = await api.post(`/visits/${visitId}/request-code`);
+        if (codeRes.data.success) {
+          setVerificationCode(codeRes.data.code);
+        }
+        setVisit(res.data.data);
+        if (res.data.data.targetLocation) {
+          const dist = calculateDistance(latitude, longitude, res.data.data.targetLocation.lat, res.data.data.targetLocation.lng);
+          setDistance(dist);
+        }
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to start visit.');
+    } finally {
+      setStartLoading(false);
+    }
+  };
+
+  const handleBypassLocation = async () => {
+    if (!userLoc) {
+      alert('Unable to fetch your current GPS coordinates. Please wait for a GPS lock.');
+      return;
+    }
+    setBypassLoading(true);
+    try {
+      const res = await api.put(`/visits/${visitId}/bypass-location`, {
+        location: {
+          lat: userLoc.lat,
+          lng: userLoc.lng
+        }
+      });
+      if (res.data.success) {
+        alert('Bypassed geofence by setting target coordinates to your current coordinates!');
+        setVisit(res.data.data);
+        setDistance(0);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to update target location.');
+    } finally {
+      setBypassLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!photo) {
       alert('A photo proof capture is required.');
@@ -83,17 +159,25 @@ export default function VisitSubmitScreen({ route, navigation }) {
       return;
     }
 
+    if (!verificationCode) {
+      alert('Verification code not generated. Please try starting the visit or reloading.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await api.post(`/visits/${visitId}/submit`, {
-        lat: userLoc.lat,
-        lng: userLoc.lng,
+        location: {
+          lat: userLoc.lat,
+          lng: userLoc.lng
+        },
         photo,
+        verificationCode,
         notes: notes.trim()
       });
 
       if (res.data.success) {
-        alert(`Visit submitted successfully!\nVerification Code: ${res.data.data.verificationCode}`);
+        alert(`Visit submitted successfully!\nVerification Code: ${verificationCode}`);
         navigation.navigate('EmployeeDashboard');
       }
     } catch (err) {
@@ -156,61 +240,101 @@ export default function VisitSubmitScreen({ route, navigation }) {
         )}
       </View>
 
-      {/* Upload Form Card */}
-      <View style={globalStyles.card}>
-        <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 12 }]}>
-          📸 Capture Evidence Proof
-        </Text>
-
-        {photo ? (
-          <View style={styles.photoContainer}>
-            <Image source={{ uri: photo }} style={styles.photoPreview} />
-            <TouchableOpacity 
-              style={styles.retakeBtn} 
-              onPress={() => setShowCamera(true)}
-              disabled={submitting}
-            >
-              <Text style={styles.retakeText}>Retake Photo</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
+      {/* Conditional UI based on Visit Status */}
+      {visit.status === 'pending' ? (
+        <View style={globalStyles.card}>
+          <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 12 }]}>
+            🚀 Start Audit Session
+          </Text>
+          <Text style={styles.description}>
+            You must punch your starting location to initialize this audit session before uploading verification proofs.
+          </Text>
           <TouchableOpacity 
-            style={styles.cameraPlaceholder} 
-            onPress={() => setShowCamera(true)}
+            style={globalStyles.btn} 
+            onPress={handleStartVisit}
+            disabled={startLoading}
+          >
+            {startLoading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={globalStyles.btnText}>Start Audit (Punch GPS)</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : (
+        /* Upload Form Card */
+        <View style={globalStyles.card}>
+          <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 12 }]}>
+            📸 Capture Evidence Proof (Code: {verificationCode || 'N/A'})
+          </Text>
+
+          {photo ? (
+            <View style={styles.photoContainer}>
+              <Image source={{ uri: photo }} style={styles.photoPreview} />
+              <TouchableOpacity 
+                style={styles.retakeBtn} 
+                onPress={() => setShowCamera(true)}
+                disabled={submitting}
+              >
+                <Text style={styles.retakeText}>Retake Photo</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              style={styles.cameraPlaceholder} 
+              onPress={() => setShowCamera(true)}
+              disabled={submitting || !isWithinGeofence}
+            >
+              <Text style={[styles.cameraPlaceholderText, !isWithinGeofence ? { color: COLORS.textMuted } : null]}>
+                📷 Capture Client Site Photo
+              </Text>
+              <Text style={styles.cameraSubtext}>Direct camera capture required (No gallery uploads)</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={[globalStyles.inputGroup, { marginTop: 16 }]}>
+            <Text style={globalStyles.label}>Execution Notes (Optional)</Text>
+            <TextInput
+              style={[globalStyles.input, { height: 80, textAlignVertical: 'top' }]}
+              placeholder="Add comments, client sign-off remarks, or deliverables..."
+              multiline
+              numberOfLines={4}
+              value={notes}
+              onChangeText={setNotes}
+              disabled={submitting}
+            />
+          </View>
+
+          <TouchableOpacity 
+            style={[globalStyles.btn, !isWithinGeofence ? { backgroundColor: COLORS.textMuted } : null]} 
+            onPress={handleSubmit}
             disabled={submitting || !isWithinGeofence}
           >
-            <Text style={[styles.cameraPlaceholderText, !isWithinGeofence ? { color: COLORS.textMuted } : null]}>
-              📷 Capture Client Site Photo
-            </Text>
-            <Text style={styles.cameraSubtext}>Direct camera capture required (No gallery uploads)</Text>
+            {submitting ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={globalStyles.btnText}>Submit Visit Evidence</Text>
+            )}
           </TouchableOpacity>
-        )}
 
-        <View style={[globalStyles.inputGroup, { marginTop: 16 }]}>
-          <Text style={globalStyles.label}>Execution Notes (Optional)</Text>
-          <TextInput
-            style={[globalStyles.input, { height: 80, textAlignVertical: 'top' }]}
-            placeholder="Add comments, client sign-off remarks, or deliverables..."
-            multiline
-            numberOfLines={4}
-            value={notes}
-            onChangeText={setNotes}
-            disabled={submitting}
-          />
-        </View>
-
-        <TouchableOpacity 
-          style={[globalStyles.btn, !isWithinGeofence ? { backgroundColor: COLORS.textMuted } : null]} 
-          onPress={handleSubmit}
-          disabled={submitting || !isWithinGeofence}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <Text style={globalStyles.btnText}>Submit Visit Evidence</Text>
+          {/* Testing Bypass Option */}
+          {!isWithinGeofence && distance !== null && (
+            <View style={{ marginTop: 16, borderTopWidth: 1, borderColor: COLORS.border, paddingTop: 16 }}>
+              <TouchableOpacity 
+                style={[globalStyles.btn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.primary }]} 
+                onPress={handleBypassLocation}
+                disabled={bypassLoading}
+              >
+                {bypassLoading ? (
+                  <ActivityIndicator color={COLORS.primary} size="small" />
+                ) : (
+                  <Text style={[globalStyles.btnText, { color: COLORS.primary }]}>🔧 Testing Bypass: Set Current GPS as Target</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           )}
-        </TouchableOpacity>
-      </View>
+        </View>
+      )}
 
       {/* Camera modal */}
       <Modal visible={showCamera} animationType="slide">
