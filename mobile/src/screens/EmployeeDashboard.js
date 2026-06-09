@@ -108,6 +108,8 @@ export default function EmployeeDashboard({ navigation }) {
       setPunchLoading(false);
       setPunchMessage('');
     }
+  };
+
   const handleBypassOfficeLocation = async () => {
     setBypassLoading(true);
     try {
