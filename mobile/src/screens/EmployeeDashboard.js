@@ -12,6 +12,7 @@ export default function EmployeeDashboard({ navigation }) {
   const [attendance, setAttendance] = useState(null); // today's attendance record
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'tasks' | 'visits'
 
   // Camera punch state
   const [showCamera, setShowCamera] = useState(false);
@@ -112,6 +113,145 @@ export default function EmployeeDashboard({ navigation }) {
   const isClockedIn = attendance && attendance.checkIn && !attendance.checkOut;
   const isShiftDone = attendance && attendance.checkIn && attendance.checkOut;
 
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'attendance':
+        return (
+          <ScrollView 
+            contentContainerStyle={{ padding: 16 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          >
+            {/* Attendance card */}
+            <View style={globalStyles.card}>
+              <Text style={[globalStyles.title, { fontSize: 16 }]}>🕒 Shift Tracker</Text>
+              
+              {isShiftDone ? (
+                <View style={styles.shiftDoneContainer}>
+                  <Text style={styles.shiftDoneText}>Shift Completed Today</Text>
+                  <Text style={styles.shiftTimeDetails}>
+                    In: {formatTime(attendance.checkIn)} | Out: {formatTime(attendance.checkOut)}
+                  </Text>
+                </View>
+              ) : isClockedIn ? (
+                <View>
+                  <Text style={styles.activeShiftText}>Currently On Duty</Text>
+                  <Text style={styles.shiftTimeDetails}>Clocked in at: {formatTime(attendance.checkIn)}</Text>
+                  
+                  <TouchableOpacity 
+                    style={[globalStyles.btn, { backgroundColor: COLORS.danger, marginTop: 16 }]}
+                    onPress={() => handlePunchPress('out')}
+                    disabled={punchLoading}
+                  >
+                    <Text style={globalStyles.btnText}>Clock-Out</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View>
+                  <Text style={styles.inactiveShiftText}>Off Duty</Text>
+                  <Text style={styles.shiftTimeDetails}>You are currently clocked out.</Text>
+                  
+                  <TouchableOpacity 
+                    style={[globalStyles.btn, { backgroundColor: COLORS.success, marginTop: 16 }]}
+                    onPress={() => handlePunchPress('in')}
+                    disabled={punchLoading}
+                  >
+                    <Text style={globalStyles.btnText}>Clock-In</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* Dashboard Summary card */}
+            <View style={[globalStyles.card, { marginTop: 16 }]}>
+              <Text style={styles.infoTitle}>📊 Daily Tasks Overview</Text>
+              
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Assigned Desk Tasks</Text>
+                <Text style={styles.infoValue}>{tasks.length} pending</Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Assigned Field Visits</Text>
+                <Text style={styles.infoValue}>{visits.length} pending</Text>
+              </View>
+              
+              <Text style={[styles.shiftTimeDetails, { marginTop: 12, textAlign: 'center', fontStyle: 'italic' }]}>
+                Use the bottom navigation tabs to access desk tasks and field visits.
+              </Text>
+            </View>
+          </ScrollView>
+        );
+      case 'tasks':
+        return (
+          <ScrollView 
+            contentContainerStyle={{ padding: 16 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          >
+            <Text style={styles.sectionTitle}>📋 Assigned Desk Tasks ({tasks.length})</Text>
+            {tasks.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>No pending desk tasks assigned.</Text>
+              </View>
+            ) : (
+              tasks.map(task => (
+                <TouchableOpacity 
+                  key={task._id} 
+                  style={globalStyles.card}
+                  onPress={() => navigation.navigate('TaskSubmit', { taskId: task._id })}
+                >
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle}>{task.title}</Text>
+                    <View style={[globalStyles.badge, { backgroundColor: '#FEF3C7' }]}>
+                      <Text style={[globalStyles.badgeText, { color: COLORS.warning }]}>Task</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.cardDesc} numberOfLines={3}>{task.description}</Text>
+                  <Text style={styles.cardDeadline}>
+                    Due: {new Date(task.deadline).toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
+        );
+      case 'visits':
+        return (
+          <ScrollView 
+            contentContainerStyle={{ padding: 16 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          >
+            <Text style={styles.sectionTitle}>📍 Field Client Visits ({visits.length})</Text>
+            {visits.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>No pending field visits assigned.</Text>
+              </View>
+            ) : (
+              visits.map(visit => (
+                <TouchableOpacity 
+                  key={visit._id} 
+                  style={globalStyles.card}
+                  onPress={() => navigation.navigate('VisitSubmit', { visitId: visit._id })}
+                >
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle}>{visit.clientName}</Text>
+                    <View style={[globalStyles.badge, { backgroundColor: COLORS.primaryLight }]}>
+                      <Text style={[globalStyles.badgeText, { color: COLORS.primary }]}>Visit</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.cardDesc} numberOfLines={3}>{visit.purpose}</Text>
+                  <Text style={styles.cardDeadline}>
+                    Due: {new Date(visit.deadline).toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       
@@ -126,104 +266,34 @@ export default function EmployeeDashboard({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        contentContainerStyle={{ padding: 16 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        {/* Attendance card */}
-        <View style={globalStyles.card}>
-          <Text style={[globalStyles.title, { fontSize: 16 }]}>🕒 Shift Tracker</Text>
-          
-          {isShiftDone ? (
-            <View style={styles.shiftDoneContainer}>
-              <Text style={styles.shiftDoneText}>Shift Completed Today</Text>
-              <Text style={styles.shiftTimeDetails}>
-                In: {formatTime(attendance.checkIn)} | Out: {formatTime(attendance.checkOut)}
-              </Text>
-            </View>
-          ) : isClockedIn ? (
-            <View>
-              <Text style={styles.activeShiftText}>Currently On Duty</Text>
-              <Text style={styles.shiftTimeDetails}>Clocked in at: {formatTime(attendance.checkIn)}</Text>
-              
-              <TouchableOpacity 
-                style={[globalStyles.btn, { backgroundColor: COLORS.danger, marginTop: 16 }]}
-                onPress={() => handlePunchPress('out')}
-                disabled={punchLoading}
-              >
-                <Text style={globalStyles.btnText}>Clock-Out</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View>
-              <Text style={styles.inactiveShiftText}>Off Duty</Text>
-              <Text style={styles.shiftTimeDetails}>You are currently clocked out.</Text>
-              
-              <TouchableOpacity 
-                style={[globalStyles.btn, { backgroundColor: COLORS.success, marginTop: 16 }]}
-                onPress={() => handlePunchPress('in')}
-                disabled={punchLoading}
-              >
-                <Text style={globalStyles.btnText}>Clock-In</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+      {renderTabContent()}
 
-        {/* Visits Section */}
-        <Text style={styles.sectionTitle}>📍 Field Client Visits ({visits.length})</Text>
-        {visits.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No pending field visits assigned.</Text>
-          </View>
-        ) : (
-          visits.map(visit => (
-            <TouchableOpacity 
-              key={visit._id} 
-              style={globalStyles.card}
-              onPress={() => navigation.navigate('VisitSubmit', { visitId: visit._id })}
-            >
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{visit.clientName}</Text>
-                <View style={[globalStyles.badge, { backgroundColor: COLORS.primaryLight }]}>
-                  <Text style={[globalStyles.badgeText, { color: COLORS.primary }]}>Visit</Text>
-                </View>
-              </View>
-              <Text style={styles.cardDesc} numberOfLines={2}>{visit.purpose}</Text>
-              <Text style={styles.cardDeadline}>
-                Due: {new Date(visit.deadline).toLocaleDateString()}
-              </Text>
-            </TouchableOpacity>
-          ))
-        )}
+      {/* Custom Bottom Tab Navigation Bar */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => setActiveTab('attendance')}
+        >
+          <Text style={styles.tabIcon}>🕒</Text>
+          <Text style={[styles.tabLabel, activeTab === 'attendance' ? styles.activeTabLabel : null]}>Shift</Text>
+        </TouchableOpacity>
 
-        {/* Tasks Section */}
-        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>📋 Desk Tasks ({tasks.length})</Text>
-        {tasks.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No pending desk tasks assigned.</Text>
-          </View>
-        ) : (
-          tasks.map(task => (
-            <TouchableOpacity 
-              key={task._id} 
-              style={globalStyles.card}
-              onPress={() => navigation.navigate('TaskSubmit', { taskId: task._id })}
-            >
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{task.title}</Text>
-                <View style={[globalStyles.badge, { backgroundColor: '#FEF3C7' }]}>
-                  <Text style={[globalStyles.badgeText, { color: COLORS.warning }]}>Task</Text>
-                </View>
-              </View>
-              <Text style={styles.cardDesc} numberOfLines={2}>{task.description}</Text>
-              <Text style={styles.cardDeadline}>
-                Due: {new Date(task.deadline).toLocaleDateString()}
-              </Text>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => setActiveTab('tasks')}
+        >
+          <Text style={styles.tabIcon}>📋</Text>
+          <Text style={[styles.tabLabel, activeTab === 'tasks' ? styles.activeTabLabel : null]}>Tasks</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => setActiveTab('visits')}
+        >
+          <Text style={styles.tabIcon}>📍</Text>
+          <Text style={[styles.tabLabel, activeTab === 'visits' ? styles.activeTabLabel : null]}>Visits</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Camera modal popup */}
       <Modal visible={showCamera} animationType="slide">
@@ -379,6 +449,55 @@ const styles = StyleSheet.create({
   loadingModalText: {
     marginTop: 12,
     fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textMain,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    height: 65,
+    backgroundColor: COLORS.card,
+    borderTopWidth: 1,
+    borderColor: COLORS.border,
+    paddingBottom: Platform.OS === 'ios' ? 18 : 8,
+    paddingTop: 8,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabIcon: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
+  activeTabLabel: {
+    color: COLORS.primary,
+    fontWeight: '800',
+  },
+  infoTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textMain,
+    marginBottom: 12,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: COLORS.border,
+  },
+  infoLabel: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+  },
+  infoValue: {
+    fontSize: 13,
     fontWeight: '600',
     color: COLORS.textMain,
   },
