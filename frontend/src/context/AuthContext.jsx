@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }) => {
   // Login with Google
   const loginWithGoogle = async (googleToken, role) => {
     try {
-      const res = await api.post('/api/auth/google', { token: googleToken, role });
+      const res = await api.post('/auth/google', { token: googleToken, role });
       
       if (res.data.success) {
         localStorage.setItem('verikarya_token', res.data.token);

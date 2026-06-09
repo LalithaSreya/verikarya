@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Image, Modal } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Image, Modal, Platform } from 'react-native';
 import { AuthContext, api } from '../context/AuthContext';
 import { COLORS, globalStyles } from '../styles/globalStyles';
 
@@ -8,20 +8,50 @@ export default function ManagerDashboard() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('queue'); // 'queue' | 'assign' | 'logs'
+  const [employees, setEmployees] = useState([]);
+  const [history, setHistory] = useState([]);
 
   // Detail Audit Modal State
   const [selectedReview, setSelectedReview] = useState(null);
   const [comments, setComments] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchReviews = async () => {
+  // Assignment Form State
+  const [assignType, setAssignType] = useState('task'); // 'task' | 'audit'
+  const [employeeSelectVisible, setEmployeeSelectVisible] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState(null); // { _id, name }
+  const [formSubmitting, setFormSubmitting] = useState(false);
+
+  // Task form inputs
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDesc, setTaskDesc] = useState('');
+  const [taskPriority, setTaskPriority] = useState('medium'); // 'low' | 'medium' | 'high'
+  const [taskDeadline, setTaskDeadline] = useState(''); // YYYY-MM-DD
+  
+  // Audit form inputs
+  const [auditClient, setAuditClient] = useState('');
+  const [auditPurpose, setAuditPurpose] = useState('');
+  const [auditLat, setAuditLat] = useState('');
+  const [auditLng, setAuditLng] = useState('');
+  const [auditDeadline, setAuditDeadline] = useState(''); // YYYY-MM-DD
+
+  const loadAllData = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/reviews?status=pending');
-      setReviews(res.data.data);
+      // 1. Fetch pending reviews
+      const reviewsRes = await api.get('/reviews?status=pending');
+      setReviews(reviewsRes.data.data);
+
+      // 2. Fetch employees list
+      const employeesRes = await api.get('/auth/employees');
+      setEmployees(employeesRes.data.data);
+
+      // 3. Fetch attendance logs
+      const historyRes = await api.get('/attendance/history');
+      setHistory(historyRes.data.data);
     } catch (err) {
-      console.error('Error fetching reviews:', err);
-      alert('Failed to load pending reviews.');
+      console.error('Error loading manager data:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -29,12 +59,18 @@ export default function ManagerDashboard() {
   };
 
   useEffect(() => {
-    fetchReviews();
+    loadAllData();
+    // Initialize default deadline (today + 3 days)
+    const defaultDate = new Date();
+    defaultDate.setDate(defaultDate.getDate() + 3);
+    const dateStr = defaultDate.toISOString().split('T')[0];
+    setTaskDeadline(dateStr);
+    setAuditDeadline(dateStr);
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchReviews();
+    loadAllData();
   };
 
   const handleAuditAction = async (statusVal) => {
@@ -51,7 +87,7 @@ export default function ManagerDashboard() {
         alert(`Submission successfully ${statusVal}!`);
         setSelectedReview(null);
         setComments('');
-        fetchReviews();
+        loadAllData();
       }
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to submit review decision.');
@@ -60,37 +96,85 @@ export default function ManagerDashboard() {
     }
   };
 
+  const handleCreateTask = async () => {
+    if (!taskTitle || !taskDesc || !selectedEmployee || !taskDeadline) {
+      alert('Please fill in all fields and select an employee.');
+      return;
+    }
+    setFormSubmitting(true);
+    try {
+      const res = await api.post('/tasks', {
+        title: taskTitle.trim(),
+        description: taskDesc.trim(),
+        assignedTo: selectedEmployee._id,
+        priority: taskPriority,
+        deadline: taskDeadline
+      });
+      if (res.data.success) {
+        alert('Compliance Task assigned successfully!');
+        setTaskTitle('');
+        setTaskDesc('');
+        setSelectedEmployee(null);
+        loadAllData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to assign task.');
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const handleCreateAudit = async () => {
+    const latVal = parseFloat(auditLat);
+    const lngVal = parseFloat(auditLng);
+
+    if (!auditClient || !auditPurpose || !selectedEmployee || isNaN(latVal) || isNaN(lngVal) || !auditDeadline) {
+      alert('Please fill in all fields with valid coordinates.');
+      return;
+    }
+    setFormSubmitting(true);
+    try {
+      const res = await api.post('/visits', {
+        clientName: auditClient.trim(),
+        purpose: auditPurpose.trim(),
+        assignedTo: selectedEmployee._id,
+        targetLocation: {
+          lat: latVal,
+          lng: lngVal
+        },
+        deadline: auditDeadline
+      });
+      if (res.data.success) {
+        alert('On-Site Audit scheduled successfully!');
+        setAuditClient('');
+        setAuditPurpose('');
+        setAuditLat('');
+        setAuditLng('');
+        setSelectedEmployee(null);
+        loadAllData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to schedule audit.');
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
   const getPhotoUrl = (photoPath) => {
     if (!photoPath) return '';
     if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
       return photoPath;
     }
-    // Fallback to Render static uploads
     return `https://verikarya.onrender.com${photoPath}`;
   };
 
-  if (loading && !refreshing) {
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '---';
+    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const renderQueueContent = () => {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.welcomeText}>Security Lead Hub</Text>
-          <Text style={styles.nameText}>{user?.name}</Text>
-        </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
-
       <ScrollView
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -134,7 +218,7 @@ export default function ManagerDashboard() {
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle}>{title}</Text>
                   <View style={[globalStyles.badge, { backgroundColor: COLORS.primaryLight }]}>
-                    <Text style={[globalStyles.badgeText, { color: COLORS.primary }]}>
+                    <Text style={[globalStyles.badgeText, { color: COLORS.primary, textTransform: 'uppercase' }]}>
                       {review.type}
                     </Text>
                   </View>
@@ -146,6 +230,269 @@ export default function ManagerDashboard() {
           })
         )}
       </ScrollView>
+    );
+  };
+
+  const renderAssignForm = () => {
+    return (
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <View style={styles.formToggleContainer}>
+          <TouchableOpacity 
+            style={[styles.formToggleBtn, assignType === 'task' ? styles.activeFormToggleBtn : null]}
+            onPress={() => setAssignType('task')}
+          >
+            <Text style={[styles.formToggleText, assignType === 'task' ? styles.activeFormToggleText : null]}>📋 Assign Task</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.formToggleBtn, assignType === 'audit' ? styles.activeFormToggleBtn : null]}
+            onPress={() => setAssignType('audit')}
+          >
+            <Text style={[styles.formToggleText, assignType === 'audit' ? styles.activeFormToggleText : null]}>📍 Assign Audit</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Selected Employee Picker */}
+        <View style={globalStyles.inputGroup}>
+          <Text style={globalStyles.label}>Select Assignee</Text>
+          <TouchableOpacity 
+            style={styles.pickerButton}
+            onPress={() => setEmployeeSelectVisible(true)}
+          >
+            <Text style={styles.pickerButtonText}>
+              {selectedEmployee ? `🧑‍💼 ${selectedEmployee.name} (${selectedEmployee.email})` : 'Select an Employee...'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {assignType === 'task' ? (
+          <View>
+            <View style={globalStyles.inputGroup}>
+              <Text style={globalStyles.label}>Task Title</Text>
+              <TextInput 
+                style={globalStyles.input}
+                placeholder="e.g. Configure Firewall security policies"
+                value={taskTitle}
+                onChangeText={setTaskTitle}
+              />
+            </View>
+            <View style={globalStyles.inputGroup}>
+              <Text style={globalStyles.label}>Task Description</Text>
+              <TextInput 
+                style={[globalStyles.input, { height: 80, textAlignVertical: 'top' }]}
+                placeholder="Describe compliance verification requirements..."
+                multiline
+                numberOfLines={3}
+                value={taskDesc}
+                onChangeText={setTaskDesc}
+              />
+            </View>
+            <View style={globalStyles.inputGroup}>
+              <Text style={globalStyles.label}>Priority Level</Text>
+              <View style={styles.priorityContainer}>
+                {['low', 'medium', 'high'].map(p => (
+                  <TouchableOpacity 
+                    key={p} 
+                    style={[styles.priorityBtn, taskPriority === p ? styles.activePriorityBtn : null]}
+                    onPress={() => setTaskPriority(p)}
+                  >
+                    <Text style={[styles.priorityBtnText, taskPriority === p ? styles.activePriorityBtnText : null]}>
+                      {p.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            <View style={globalStyles.inputGroup}>
+              <Text style={globalStyles.label}>Deadline Date (YYYY-MM-DD)</Text>
+              <TextInput 
+                style={globalStyles.input}
+                placeholder="YYYY-MM-DD"
+                value={taskDeadline}
+                onChangeText={setTaskDeadline}
+              />
+            </View>
+
+            <TouchableOpacity 
+              style={[globalStyles.btn, { marginTop: 12 }]}
+              onPress={handleCreateTask}
+              disabled={formSubmitting}
+            >
+              {formSubmitting ? <ActivityIndicator color="#FFF" /> : <Text style={globalStyles.btnText}>Assign Compliance Task</Text>}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View>
+            <View style={globalStyles.inputGroup}>
+              <Text style={globalStyles.label}>Client Name</Text>
+              <TextInput 
+                style={globalStyles.input}
+                placeholder="e.g. Apex Corp Headquarters"
+                value={auditClient}
+                onChangeText={setAuditClient}
+              />
+            </View>
+            <View style={globalStyles.inputGroup}>
+              <Text style={globalStyles.label}>Audit Purpose</Text>
+              <TextInput 
+                style={[globalStyles.input, { height: 80, textAlignVertical: 'top' }]}
+                placeholder="Describe server room audit or biometric lock checks..."
+                multiline
+                numberOfLines={3}
+                value={auditPurpose}
+                onChangeText={setAuditPurpose}
+              />
+            </View>
+            
+            <View style={styles.coordinatesRow}>
+              <View style={[globalStyles.inputGroup, { flex: 1 }]}>
+                <Text style={globalStyles.label}>Latitude</Text>
+                <TextInput 
+                  style={globalStyles.input}
+                  placeholder="e.g. 12.9716"
+                  keyboardType="numeric"
+                  value={auditLat}
+                  onChangeText={setAuditLat}
+                />
+              </View>
+              <View style={[globalStyles.inputGroup, { flex: 1, marginLeft: 12 }]}>
+                <Text style={globalStyles.label}>Longitude</Text>
+                <TextInput 
+                  style={globalStyles.input}
+                  placeholder="e.g. 77.5946"
+                  keyboardType="numeric"
+                  value={auditLng}
+                  onChangeText={setAuditLng}
+                />
+              </View>
+            </View>
+
+            <View style={globalStyles.inputGroup}>
+              <Text style={globalStyles.label}>Deadline Date (YYYY-MM-DD)</Text>
+              <TextInput 
+                style={globalStyles.input}
+                placeholder="YYYY-MM-DD"
+                value={auditDeadline}
+                onChangeText={setAuditDeadline}
+              />
+            </View>
+
+            <TouchableOpacity 
+              style={[globalStyles.btn, { marginTop: 12 }]}
+              onPress={handleCreateAudit}
+              disabled={formSubmitting}
+            >
+              {formSubmitting ? <ActivityIndicator color="#FFF" /> : <Text style={globalStyles.btnText}>Schedule On-Site Audit</Text>}
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    );
+  };
+
+  const renderLogsContent = () => {
+    return (
+      <ScrollView 
+        contentContainerStyle={{ padding: 16 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <Text style={styles.sectionTitle}>📅 Employee Attendance Logs ({history.length})</Text>
+        {history.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No attendance records logged.</Text>
+          </View>
+        ) : (
+          history.map(record => (
+            <View key={record._id} style={globalStyles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.logEmployeeName}>{record.user?.name}</Text>
+                <Text style={styles.logDate}>{record.date}</Text>
+              </View>
+              
+              <View style={styles.logPunchesRow}>
+                <View style={styles.logPunchBox}>
+                  <Text style={styles.logPunchTitle}>Clock-In</Text>
+                  <Text style={styles.logPunchTime}>{formatTime(record.checkIn)}</Text>
+                  <Text style={styles.logPunchMeta}>Code: {record.checkInCode || 'N/A'}</Text>
+                  <Text style={styles.logPunchMeta}>Distance: {record.checkInDistance ? `${Math.round(record.checkInDistance)}m` : '---'}</Text>
+                </View>
+                
+                <View style={[styles.logPunchBox, { borderLeftWidth: 1, borderColor: COLORS.border }]}>
+                  <Text style={styles.logPunchTitle}>Clock-Out</Text>
+                  <Text style={styles.logPunchTime}>{formatTime(record.checkOut)}</Text>
+                  <Text style={styles.logPunchMeta}>Code: {record.checkOutCode || 'N/A'}</Text>
+                  <Text style={styles.logPunchMeta}>Distance: {record.checkOutDistance ? `${Math.round(record.checkOutDistance)}m` : '---'}</Text>
+                </View>
+              </View>
+            </View>
+          ))
+        )}
+      </ScrollView>
+    );
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'queue':
+        return renderQueueContent();
+      case 'assign':
+        return renderAssignForm();
+      case 'logs':
+        return renderLogsContent();
+      default:
+        return null;
+    }
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.welcomeText}>Security Lead Hub</Text>
+          <Text style={styles.nameText}>{user?.name}</Text>
+        </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+
+      {renderTabContent()}
+
+      {/* Custom Bottom Tab Navigation Bar */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => setActiveTab('queue')}
+        >
+          <Text style={styles.tabIcon}>📥</Text>
+          <Text style={[styles.tabLabel, activeTab === 'queue' ? styles.activeTabLabel : null]}>Queue</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => setActiveTab('assign')}
+        >
+          <Text style={styles.tabIcon}>➕</Text>
+          <Text style={[styles.tabLabel, activeTab === 'assign' ? styles.activeTabLabel : null]}>Assign</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => setActiveTab('logs')}
+        >
+          <Text style={styles.tabIcon}>📅</Text>
+          <Text style={[styles.tabLabel, activeTab === 'logs' ? styles.activeTabLabel : null]}>Logs</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Audit Detail Modal */}
       {selectedReview && (
@@ -178,14 +525,14 @@ export default function ManagerDashboard() {
               {/* Meta logs */}
               <View style={globalStyles.card}>
                 <Text style={styles.metaLine}>
-                  Employee: <Text style={{ fontWeight: '700' }}>{selectedReview.details?.assignedTo?.name}</Text>
+                  Employee: <Text style={{ fontWeight: '700' }}>{selectedReview.details?.assignedTo?.name || 'Worker'}</Text>
                 </Text>
                 <Text style={styles.metaLine}>
                   Type: <Text style={{ textTransform: 'capitalize', fontWeight: '700' }}>{selectedReview.type}</Text>
                 </Text>
                 <Text style={styles.metaLine}>
                   Code: <Text style={{ fontFamily: 'monospace', fontWeight: '800', color: COLORS.primary }}>
-                    {selectedReview.details?.verificationCode}
+                    {selectedReview.details?.verificationCode || 'N/A'}
                   </Text>
                 </Text>
 
@@ -246,6 +593,40 @@ export default function ManagerDashboard() {
           </View>
         </Modal>
       )}
+
+      {/* Employee Select Modal */}
+      <Modal visible={employeeSelectVisible} animationType="slide" transparent>
+        <View style={styles.selectModalOverlay}>
+          <View style={styles.selectModalContent}>
+            <Text style={styles.selectModalTitle}>Select Employee</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              {employees.length === 0 ? (
+                <Text style={{ textAlign: 'center', padding: 20, color: COLORS.textMuted }}>No employees found.</Text>
+              ) : (
+                employees.map(emp => (
+                  <TouchableOpacity 
+                    key={emp._id}
+                    style={styles.selectModalItem}
+                    onPress={() => {
+                      setSelectedEmployee(emp);
+                      setEmployeeSelectVisible(false);
+                    }}
+                  >
+                    <Text style={styles.selectModalItemText}>🧑‍💼 {emp.name}</Text>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{emp.email}</Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+            <TouchableOpacity 
+              style={[globalStyles.btn, { backgroundColor: COLORS.danger, marginTop: 12 }]}
+              onPress={() => setEmployeeSelectVisible(false)}
+            >
+              <Text style={globalStyles.btnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );
@@ -433,5 +814,164 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: 8,
     marginBottom: 32,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    height: 65,
+    backgroundColor: COLORS.card,
+    borderTopWidth: 1,
+    borderColor: COLORS.border,
+    paddingBottom: Platform.OS === 'ios' ? 18 : 8,
+    paddingTop: 8,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabIcon: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
+  activeTabLabel: {
+    color: COLORS.primary,
+    fontWeight: '800',
+  },
+  formToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.border,
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 16,
+  },
+  formToggleBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  activeFormToggleBtn: {
+    backgroundColor: COLORS.card,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  formToggleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
+  activeFormToggleText: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  pickerButton: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    padding: 12,
+    justifyContent: 'center',
+  },
+  pickerButtonText: {
+    fontSize: 14,
+    color: COLORS.textMain,
+  },
+  priorityContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  priorityBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+  },
+  activePriorityBtn: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
+  },
+  priorityBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
+  activePriorityBtnText: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  coordinatesRow: {
+    flexDirection: 'row',
+  },
+  selectModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  selectModalContent: {
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 20,
+  },
+  selectModalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textMain,
+    marginBottom: 16,
+  },
+  selectModalItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: COLORS.border,
+  },
+  selectModalItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textMain,
+  },
+  logEmployeeName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  logDate: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+  },
+  logPunchesRow: {
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  logPunchBox: {
+    flex: 1,
+    paddingHorizontal: 8,
+  },
+  logPunchTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textMain,
+    marginBottom: 4,
+  },
+  logPunchTime: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.primary,
+    marginBottom: 2,
+  },
+  logPunchMeta: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 1,
   },
 });
