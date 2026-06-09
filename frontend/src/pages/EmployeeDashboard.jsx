@@ -224,7 +224,7 @@ export const EmployeeDashboard = () => {
     <div>
       <div style={{ marginBottom: 'var(--spacing-lg)' }}>
         <h2>Welcome to VeriKarya</h2>
-        <p className="text-muted">Track your attendance, manage assigned tasks, and submit field work verification proofs.</p>
+        <p className="text-muted">Track your attendance, manage assigned tasks, and submit on-site audit verification proofs.</p>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
@@ -238,7 +238,7 @@ export const EmployeeDashboard = () => {
           {/* Attendance Punch Box */}
           <div className="card">
             <h3 className="card-title">🕒 Attendance Punch (Verified & Geofenced)</h3>
-            <p className="card-subtitle">Punch-in/out requires 100m office geofence check, camera capture, and VK code.</p>
+            <p className="card-subtitle">Punch-in/out requires 100m office geofence check, camera identity verification, and VK code.</p>
             
             <div style={{ 
               display: 'flex', 
@@ -350,16 +350,15 @@ export const EmployeeDashboard = () => {
               </div>
             )}
           </div>
-
         </div>
 
-        {/* Right column: Stats Summary & Field Visits overview */}
+             {/* Right column: Stats Summary & On-Site Audits overview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
           
           {/* Work Summary Stats Card */}
           <div className="card" style={{ background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: 'white' }}>
             <h3 style={{ color: 'white', marginBottom: 'var(--spacing-sm)' }}>📊 Work Summary</h3>
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: 'var(--spacing-md)' }}>Your task and field visit milestones.</p>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: 'var(--spacing-md)' }}>Your task and field audit milestones.</p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.15)', paddingBottom: '6px' }}>
@@ -375,22 +374,22 @@ export const EmployeeDashboard = () => {
                 <span style={{ fontWeight: 700 }}>{pendingTasks}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px' }}>
-                <span>Submitted Field Visits</span>
+                <span>Submitted On-Site Audits</span>
                 <span style={{ fontWeight: 700 }}>{submittedVisits} / {totalVisits}</span>
               </div>
             </div>
           </div>
-
+ 
           {/* Quick Visits List */}
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
-              <h3 style={{ margin: 0 }}>📍 Field Visits</h3>
-              <Link to="/visits" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Go to Visits →</Link>
+              <h3 style={{ margin: 0 }}>📍 On-Site Audits</h3>
+              <Link to="/visits" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Go to Audits →</Link>
             </div>
             
             {visits.filter(v => v.status !== 'submitted').length === 0 ? (
               <p className="text-muted" style={{ textAlign: 'center', padding: 'var(--spacing-md)' }}>
-                🚗 No pending field visits scheduled.
+                🚗 No pending on-site audits scheduled.
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
