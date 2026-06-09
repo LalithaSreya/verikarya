@@ -12,7 +12,7 @@ const { sendWhatsAppMessage } = require('../services/whatsappService');
 // @access  Private (Manager only)
 const createTask = async (req, res) => {
   try {
-    const { title, description, assignedTo, priority, deadline, clientPhone } = req.body;
+    const { title, description, assignedTo, priority, deadline, clientPhone, requireCode } = req.body;
 
     if (!title || !description || !assignedTo || !deadline) {
       return res.status(400).json({ success: false, error: 'Please provide all required fields' });
@@ -31,7 +31,8 @@ const createTask = async (req, res) => {
       assignedBy: req.user.id,
       priority,
       deadline,
-      clientPhone
+      clientPhone,
+      requireCode: requireCode !== undefined ? requireCode : true
     });
 
     res.status(201).json({
@@ -176,10 +177,6 @@ const submitTaskEvidence = async (req, res) => {
   try {
     const { photo, verificationCode, notes } = req.body;
 
-    if (!verificationCode) {
-      return res.status(400).json({ success: false, error: 'Please provide the verification code' });
-    }
-
     const task = await Task.findById(req.params.id);
 
     if (!task) {
@@ -190,16 +187,25 @@ const submitTaskEvidence = async (req, res) => {
       return res.status(403).json({ success: false, error: 'Not authorized to submit evidence for this task' });
     }
 
-    // Verify verification code
-    const codeRecord = await VerificationCode.findOne({
-      code: verificationCode,
-      referenceId: task._id,
-      type: 'task',
-      isUsed: false
-    });
+    let codeRecord = null;
+    const isCodeRequired = task.requireCode !== false; // defaults to true if undefined
 
-    if (!codeRecord) {
-      return res.status(400).json({ success: false, error: 'Invalid or expired verification code' });
+    if (isCodeRequired) {
+      if (!verificationCode) {
+        return res.status(400).json({ success: false, error: 'Please provide the verification code' });
+      }
+
+      // Verify verification code
+      codeRecord = await VerificationCode.findOne({
+        code: verificationCode,
+        referenceId: task._id,
+        type: 'task',
+        isUsed: false
+      });
+
+      if (!codeRecord) {
+        return res.status(400).json({ success: false, error: 'Invalid or expired verification code' });
+      }
     }
 
     // Save image to storage service if provided
@@ -214,17 +220,21 @@ const submitTaskEvidence = async (req, res) => {
       type: 'task',
       referenceId: task._id,
       photoPath: photoPath || undefined,
-      verificationCode,
+      verificationCode: isCodeRequired ? verificationCode : undefined,
       notes
     });
 
-    // Mark code as used
-    codeRecord.isUsed = true;
-    await codeRecord.save();
+    // Mark code as used if applicable
+    if (isCodeRequired && codeRecord) {
+      codeRecord.isUsed = true;
+      await codeRecord.save();
+    }
 
     // Update task status and link evidence
     task.status = 'completed';
-    task.verificationCode = verificationCode;
+    if (isCodeRequired) {
+      task.verificationCode = verificationCode;
+    }
     task.evidence = evidence._id;
     await task.save();
 

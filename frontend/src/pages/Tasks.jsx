@@ -22,6 +22,7 @@ export const Tasks = () => {
   const [formSuccess, setFormSuccess] = useState('');
   const [submittingTask, setSubmittingTask] = useState(false);
   const [clientPhone, setClientPhone] = useState('');
+  const [requireCode, setRequireCode] = useState(true);
 
   // Employee Verification Modal State
   const [activeTask, setActiveTask] = useState(null); // Task currently being verified
@@ -75,7 +76,8 @@ export const Tasks = () => {
         assignedTo,
         priority,
         deadline,
-        clientPhone
+        clientPhone,
+        requireCode
       });
 
       if (res.data.success) {
@@ -87,6 +89,7 @@ export const Tasks = () => {
         setPriority('medium');
         setDeadline('');
         setClientPhone('');
+        setRequireCode(true);
         // Reload tasks
         const tasksRes = await api.get('/tasks');
         setTasks(tasksRes.data.data);
@@ -120,16 +123,22 @@ export const Tasks = () => {
     setCapturedPhoto(null);
     setSubmissionNotes('');
     setModalError('');
-    setCodeLoading(true);
 
-    try {
-      const res = await api.post(`/tasks/${task._id}/request-code`);
-      if (res.data.success) {
-        setVerificationCode(res.data.code);
+    const isCodeRequired = task.requireCode !== false;
+
+    if (isCodeRequired) {
+      setCodeLoading(true);
+      try {
+        const res = await api.post(`/tasks/${task._id}/request-code`);
+        if (res.data.success) {
+          setVerificationCode(res.data.code);
+        }
+      } catch (err) {
+        setModalError('Failed to generate verification code. Please close and try again.');
+      } finally {
+        setCodeLoading(false);
       }
-    } catch (err) {
-      setModalError('Failed to generate verification code. Please close and try again.');
-    } finally {
+    } else {
       setCodeLoading(false);
     }
   };
@@ -166,7 +175,7 @@ export const Tasks = () => {
     try {
       const res = await api.post(`/tasks/${activeTask._id}/submit`, {
         photo: capturedPhoto || null,
-        verificationCode,
+        verificationCode: activeTask.requireCode !== false ? verificationCode : null,
         notes: submissionNotes
       });
 
@@ -272,13 +281,78 @@ export const Tasks = () => {
                     {task.progressHistory && task.progressHistory.length > 0 && (
                       <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-sm)', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--border-radius-sm)', fontSize: '0.85rem' }}>
                         <div style={{ fontWeight: 'bold', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>⏳ Saved Progress Logs ({task.progressHistory.length})</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {task.progressHistory.map((progress, idx) => (
-                            <div key={idx} style={{ borderLeft: '2px solid var(--primary-color)', paddingLeft: '6px', fontSize: '0.8rem' }}>
-                              <span style={{ color: 'var(--text-muted)' }}>{new Date(progress.timestamp).toLocaleDateString()}: </span>
-                              <span>{progress.notes || 'Progress update logged.'}</span>
+                            <div key={idx} style={{ 
+                              borderLeft: '2px solid var(--primary-color)', 
+                              paddingLeft: '6px', 
+                              fontSize: '0.8rem',
+                              display: 'flex',
+                              gap: '10px',
+                              alignItems: 'flex-start'
+                            }}>
+                              <div style={{ flex: 1 }}>
+                                <span style={{ color: 'var(--text-muted)' }}>{new Date(progress.timestamp).toLocaleDateString()}: </span>
+                                <span>{progress.notes || 'Progress update logged.'}</span>
+                              </div>
+                              {progress.photoPath && (
+                                <img 
+                                  src={progress.photoPath} 
+                                  alt="Progress log" 
+                                  style={{ 
+                                    width: '70px', 
+                                    height: '50px', 
+                                    objectFit: 'cover', 
+                                    borderRadius: '4px',
+                                    border: '1px solid var(--border-color)',
+                                    cursor: 'pointer' 
+                                  }}
+                                  onClick={() => window.open(progress.photoPath, '_blank')}
+                                />
+                              )}
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Completed Evidence block */}
+                    {task.status === 'completed' && task.evidence && (
+                      <div style={{ 
+                        marginTop: 'var(--spacing-md)', 
+                        padding: 'var(--spacing-sm)', 
+                        backgroundColor: 'rgba(16, 185, 129, 0.05)', 
+                        border: '1px solid rgba(16, 185, 129, 0.2)', 
+                        borderRadius: 'var(--border-radius-sm)', 
+                        fontSize: '0.85rem' 
+                      }}>
+                        <div style={{ fontWeight: 'bold', color: 'var(--success-color)', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>
+                          ✓ Final Completion Evidence
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1 }}>
+                            {task.evidence.notes && <p style={{ margin: '0 0 6px 0', fontSize: '0.8rem' }}><b>Notes:</b> {task.evidence.notes}</p>}
+                            {task.verificationCode && (
+                              <p style={{ margin: 0, fontSize: '0.8rem' }}>
+                                <b>Code:</b> <span style={{ fontFamily: 'monospace', padding: '2px 6px', backgroundColor: 'var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', fontWeight: 700 }}>{task.verificationCode}</span>
+                              </p>
+                            )}
+                          </div>
+                          {task.evidence.photoPath && (
+                            <img 
+                              src={task.evidence.photoPath} 
+                              alt="Final submission" 
+                              style={{ 
+                                width: '90px', 
+                                height: '65px', 
+                                objectFit: 'cover', 
+                                borderRadius: '4px',
+                                border: '1px solid var(--border-color)',
+                                cursor: 'pointer' 
+                              }}
+                              onClick={() => window.open(task.evidence.photoPath, '_blank')}
+                            />
+                          )}
                         </div>
                       </div>
                     )}
@@ -299,13 +373,15 @@ export const Tasks = () => {
                         {task.status === 'completed' && (
                           <div style={{ fontSize: '0.85rem', color: 'var(--success-color)', display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
                             <span>✓ Completed</span>
-                            <span style={{ fontFamily: 'monospace', padding: '2px 6px', backgroundColor: 'var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', fontWeight: 700 }}>
-                              {task.verificationCode}
-                            </span>
+                            {task.verificationCode && (
+                              <span style={{ fontFamily: 'monospace', padding: '2px 6px', backgroundColor: 'var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', fontWeight: 700 }}>
+                                {task.verificationCode}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
-                    )}
+                    )}           )}
                   </div>
                 ))}
               </div>
@@ -399,6 +475,19 @@ export const Tasks = () => {
                   />
                 </div>
 
+                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', marginTop: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>
+                  <input 
+                    type="checkbox" 
+                    id="requireCode" 
+                    checked={requireCode}
+                    onChange={(e) => setRequireCode(e.target.checked)}
+                    style={{ width: 'auto', cursor: 'pointer', margin: 0 }}
+                  />
+                  <label htmlFor="requireCode" style={{ margin: 0, cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', userSelect: 'none' }}>
+                    Require Verification Code (VK-Code)
+                  </label>
+                </div>
+
                 <button 
                   type="submit" 
                   className="btn btn-primary btn-block"
@@ -460,20 +549,24 @@ export const Tasks = () => {
               <p className="text-muted" style={{ textAlign: 'center', padding: 'var(--spacing-lg)' }}>Generating VK-Code...</p>
             ) : (
               <div>
-                <p className="text-muted" style={{ marginBottom: 'var(--spacing-md)' }}>
-                  Use the following code to confirm your task completion:
-                </p>
+                {activeTask.requireCode !== false && (
+                  <>
+                    <p className="text-muted" style={{ marginBottom: 'var(--spacing-md)' }}>
+                      Use the following code to confirm your task completion:
+                    </p>
 
-                <div className="verification-code-container">
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>VERIKARYA SYSTEM CODE</div>
-                  <div className="verification-code-text">{verificationCode}</div>
-                </div>
+                    <div className="verification-code-container" style={{ marginBottom: 'var(--spacing-md)' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>VERIKARYA SYSTEM CODE</div>
+                      <div className="verification-code-text">{verificationCode}</div>
+                    </div>
+                  </>
+                )}
 
                 {/* Previous Progress Updates Timeline */}
                 {activeTask.progressHistory && activeTask.progressHistory.length > 0 && (
                   <div style={{ 
                     marginBottom: 'var(--spacing-md)', 
-                    maxHeight: '150px', 
+                    maxHeight: '180px', 
                     overflowY: 'auto', 
                     padding: 'var(--spacing-sm)', 
                     backgroundColor: 'var(--bg-color)', 
@@ -481,17 +574,41 @@ export const Tasks = () => {
                     border: '1px solid var(--border-color)',
                     fontSize: '0.85rem'
                   }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-main)' }}>
                       ⏳ Previous Days' Submissions ({activeTask.progressHistory.length})
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {activeTask.progressHistory.map((progress, idx) => (
-                        <div key={idx} style={{ borderLeft: '2px solid var(--primary-color)', paddingLeft: '8px', paddingVertical: '2px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '2px' }}>
-                            <span>Update #{idx + 1}</span>
-                            <span>{new Date(progress.timestamp).toLocaleDateString()}</span>
+                        <div key={idx} style={{ 
+                          borderLeft: '2px solid var(--primary-color)', 
+                          paddingLeft: '8px', 
+                          paddingVertical: '2px',
+                          display: 'flex',
+                          gap: '10px',
+                          alignItems: 'flex-start'
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '2px' }}>
+                              <span>Update #{idx + 1}</span>
+                              <span>{new Date(progress.timestamp).toLocaleString()}</span>
+                            </div>
+                            <div style={{ color: 'var(--text-main)', fontSize: '0.8rem' }}>{progress.notes || 'Progress update logged.'}</div>
                           </div>
-                          <div style={{ color: 'var(--text-main)' }}>{progress.notes || 'Progress update logged.'}</div>
+                          {progress.photoPath && (
+                            <img 
+                              src={progress.photoPath} 
+                              alt="Progress" 
+                              style={{ 
+                                width: '60px', 
+                                height: '45px', 
+                                objectFit: 'cover', 
+                                borderRadius: '4px', 
+                                border: '1px solid var(--border-color)',
+                                cursor: 'pointer' 
+                              }}
+                              onClick={() => window.open(progress.photoPath, '_blank')}
+                            />
+                          )}
                         </div>
                       ))}
                     </div>

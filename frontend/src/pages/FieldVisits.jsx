@@ -400,19 +400,87 @@ export const FieldVisits = () => {
                           </div>
                         )}
                       </div>
-                    </div>
-
-                    {/* Progress History timeline logs */}
+                                  {/* Progress History timeline logs */}
                     {visit.progressHistory && visit.progressHistory.length > 0 && (
                       <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-sm)', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--border-radius-sm)', fontSize: '0.85rem' }}>
                         <div style={{ fontWeight: 'bold', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>⏳ Saved Progress Logs ({visit.progressHistory.length})</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {visit.progressHistory.map((progress, idx) => (
-                            <div key={idx} style={{ borderLeft: '2px solid var(--primary-color)', paddingLeft: '6px', fontSize: '0.8rem' }}>
-                              <span style={{ color: 'var(--text-muted)' }}>{new Date(progress.timestamp).toLocaleDateString()}: </span>
-                              <span>{progress.notes || 'Progress update logged.'}</span>
+                            <div key={idx} style={{ 
+                              borderLeft: '2px solid var(--primary-color)', 
+                              paddingLeft: '6px', 
+                              fontSize: '0.8rem',
+                              display: 'flex',
+                              gap: '10px',
+                              alignItems: 'flex-start'
+                            }}>
+                              <div style={{ flex: 1 }}>
+                                <span style={{ color: 'var(--text-muted)' }}>{new Date(progress.timestamp).toLocaleDateString()}: </span>
+                                <span>{progress.notes || 'Progress update logged.'}</span>
+                              </div>
+                              {progress.photoPath && (
+                                <img 
+                                  src={progress.photoPath} 
+                                  alt="Progress log" 
+                                  style={{ 
+                                    width: '70px', 
+                                    height: '50px', 
+                                    objectFit: 'cover', 
+                                    borderRadius: '4px',
+                                    border: '1px solid var(--border-color)',
+                                    cursor: 'pointer' 
+                                  }}
+                                  onClick={() => window.open(progress.photoPath, '_blank')}
+                                />
+                              )}
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Completed Evidence block */}
+                    {visit.status === 'submitted' && visit.evidence && (
+                      <div style={{ 
+                        marginTop: 'var(--spacing-md)', 
+                        padding: 'var(--spacing-sm)', 
+                        backgroundColor: 'rgba(16, 185, 129, 0.05)', 
+                        border: '1px solid rgba(16, 185, 129, 0.2)', 
+                        borderRadius: 'var(--border-radius-sm)', 
+                        fontSize: '0.85rem' 
+                      }}>
+                        <div style={{ fontWeight: 'bold', color: 'var(--success-color)', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>
+                          ✓ Final Completion Evidence
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1 }}>
+                            {visit.evidence.notes && <p style={{ margin: '0 0 6px 0', fontSize: '0.8rem' }}><b>Notes:</b> {visit.evidence.notes}</p>}
+                            {visit.verificationCode && (
+                              <p style={{ margin: 0, fontSize: '0.8rem' }}>
+                                <b>Code:</b> <span style={{ fontFamily: 'monospace', padding: '2px 6px', backgroundColor: 'var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', fontWeight: 700 }}>{visit.verificationCode}</span>
+                              </p>
+                            )}
+                            {visit.distanceToTarget !== undefined && (
+                              <p style={{ margin: '6px 0 0 0', color: 'var(--success-color)', fontSize: '0.8rem' }}>
+                                <b>Validated distance:</b> {visit.distanceToTarget} meters
+                              </p>
+                            )}
+                          </div>
+                          {visit.evidence.photoPath && (
+                            <img 
+                              src={visit.evidence.photoPath} 
+                              alt="Final submission" 
+                              style={{ 
+                                width: '90px', 
+                                height: '65px', 
+                                objectFit: 'cover', 
+                                borderRadius: '4px',
+                                border: '1px solid var(--border-color)',
+                                cursor: 'pointer' 
+                              }}
+                              onClick={() => window.open(visit.evidence.photoPath, '_blank')}
+                            />
+                          )}
                         </div>
                       </div>
                     )}
@@ -437,9 +505,11 @@ export const FieldVisits = () => {
                         {visit.status === 'submitted' && (
                           <div style={{ fontSize: '0.85rem', color: 'var(--success-color)', display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
                             <span>✓ Evidence Uploaded</span>
-                            <span style={{ fontFamily: 'monospace', padding: '2px 6px', backgroundColor: 'var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', fontWeight: 700 }}>
-                              {visit.verificationCode}
-                            </span>
+                            {visit.verificationCode && (
+                              <span style={{ fontFamily: 'monospace', padding: '2px 6px', backgroundColor: 'var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', fontWeight: 700 }}>
+                                {visit.verificationCode}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
@@ -803,7 +873,7 @@ export const FieldVisits = () => {
                 {activeVisit.progressHistory && activeVisit.progressHistory.length > 0 && (
                   <div style={{ 
                     marginBottom: 'var(--spacing-md)', 
-                    maxHeight: '150px', 
+                    maxHeight: '180px', 
                     overflowY: 'auto', 
                     padding: 'var(--spacing-sm)', 
                     backgroundColor: 'var(--bg-color)', 
@@ -811,17 +881,41 @@ export const FieldVisits = () => {
                     border: '1px solid var(--border-color)',
                     fontSize: '0.85rem'
                   }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-main)' }}>
                       ⏳ Previous Days' Submissions ({activeVisit.progressHistory.length})
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {activeVisit.progressHistory.map((progress, idx) => (
-                        <div key={idx} style={{ borderLeft: '2px solid var(--primary-color)', paddingLeft: '8px', paddingVertical: '2px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '2px' }}>
-                            <span>Update #{idx + 1}</span>
-                            <span>{new Date(progress.timestamp).toLocaleDateString()}</span>
+                        <div key={idx} style={{ 
+                          borderLeft: '2px solid var(--primary-color)', 
+                          paddingLeft: '8px', 
+                          paddingVertical: '2px',
+                          display: 'flex',
+                          gap: '10px',
+                          alignItems: 'flex-start'
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '2px' }}>
+                              <span>Update #{idx + 1}</span>
+                              <span>{new Date(progress.timestamp).toLocaleString()}</span>
+                            </div>
+                            <div style={{ color: 'var(--text-main)', fontSize: '0.8rem' }}>{progress.notes || 'Progress update logged.'}</div>
                           </div>
-                          <div style={{ color: 'var(--text-main)' }}>{progress.notes || 'Progress update logged.'}</div>
+                          {progress.photoPath && (
+                            <img 
+                              src={progress.photoPath} 
+                              alt="Progress log" 
+                              style={{ 
+                                width: '60px', 
+                                height: '45px', 
+                                objectFit: 'cover', 
+                                borderRadius: '4px',
+                                border: '1px solid var(--border-color)',
+                                cursor: 'pointer' 
+                              }}
+                              onClick={() => window.open(progress.photoPath, '_blank')}
+                            />
+                          )}
                         </div>
                       ))}
                     </div>

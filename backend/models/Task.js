@@ -44,6 +44,10 @@ const TaskSchema = new mongoose.Schema({
   clientPhone: {
     type: String
   },
+  requireCode: {
+    type: Boolean,
+    default: true
+  },
   progressHistory: [{
     photoPath: String,
     notes: String,

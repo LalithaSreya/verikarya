@@ -22,7 +22,7 @@ const EvidenceSchema = new mongoose.Schema({
   },
   verificationCode: {
     type: String,
-    required: true
+    required: false
   },
   location: {
     lat: Number,

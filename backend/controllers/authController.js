@@ -202,6 +202,7 @@ const googleLogin = async (req, res) => {
     }
 
     const { email, name } = payload;
+    const nameToSave = name || (email && email.split('@')[0]) || 'Google User';
 
     // Check if user exists
     let user = await User.findOne({ email });
@@ -212,7 +213,7 @@ const googleLogin = async (req, res) => {
       const placeholderPassword = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       
       user = await User.create({
-        name,
+        name: nameToSave,
         email,
         password: placeholderPassword,
         role: assignedRole

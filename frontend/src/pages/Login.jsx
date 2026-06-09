@@ -92,6 +92,46 @@ export const Login = () => {
     }
   };
 
+  const handleMockGoogleSignIn = async () => {
+    setError('');
+    setSubmitting(true);
+    try {
+      // Create a test profile based on the selected role tab
+      const testEmail = role === 'manager' 
+        ? 'jane_manager_google@verikarya.com' 
+        : 'john_employee_google@verikarya.com';
+      const testName = role === 'manager' 
+        ? 'Jane Manager (Google)' 
+        : 'John Employee (Google)';
+
+      const base64url = (str) => {
+        return btoa(unescape(encodeURIComponent(str)))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=/g, '');
+      };
+
+      const header = base64url(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+      const payload = base64url(JSON.stringify({
+        email: testEmail,
+        name: testName,
+        email_verified: true
+      }));
+      const mockToken = `${header}.${payload}.mock_signature`;
+
+      const res = await loginWithGoogle(mockToken, role);
+      if (res.success) {
+        handleRedirect(res.token, res.user, res.user.role);
+      } else {
+        setError(res.error || 'Mock Google Login failed.');
+      }
+    } catch (err) {
+      setError('Server connection error. Please try again later.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleGoogleError = () => {
     setError('Google Authentication failed. Please try again.');
   };
@@ -206,6 +246,30 @@ export const Login = () => {
             theme="outline"
             width="100%"
           />
+        </div>
+
+        {/* Mock Google Login for Testing */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
+          <button
+            type="button"
+            className="btn btn-outline"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontSize: '0.85rem',
+              backgroundColor: 'var(--bg-color)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-main)',
+              padding: '10px 16px'
+            }}
+            onClick={handleMockGoogleSignIn}
+            disabled={submitting}
+          >
+            <span>🔧</span> Dev/Testing: Mock Google Sign-In
+          </button>
         </div>
 
         <div style={{ marginTop: 'var(--spacing-lg)', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
