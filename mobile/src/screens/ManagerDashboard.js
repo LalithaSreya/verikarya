@@ -496,7 +496,7 @@ export default function ManagerDashboard() {
 
       {/* Audit Detail Modal */}
       {selectedReview && (
-        <Modal visible={!!selectedReview} animationType="slide">
+        <Modal visible={!!selectedReview} animationType="slide" onRequestClose={() => setSelectedReview(null)}>
           <View style={styles.modalContainer}>
             
             {/* Modal Header */}
@@ -595,7 +595,7 @@ export default function ManagerDashboard() {
       )}
 
       {/* Employee Select Modal */}
-      <Modal visible={employeeSelectVisible} animationType="slide" transparent>
+      <Modal visible={employeeSelectVisible} animationType="slide" transparent onRequestClose={() => setEmployeeSelectVisible(false)}>
         <View style={styles.selectModalOverlay}>
           <View style={styles.selectModalContent}>
             <Text style={styles.selectModalTitle}>Select Employee</Text>
@@ -821,7 +821,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderRadius: 16,
     marginHorizontal: 16,
-    marginBottom: Platform.OS === 'ios' ? 24 : 16,
+    marginBottom: Platform.OS === 'ios' ? 32 : 28,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,

@@ -11,14 +11,25 @@ export const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { login, loginWithGoogle, isAuthenticated, user } = useAuth();
+  const { login, loginWithGoogle, isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const redirectUri = searchParams.get('redirect_uri');
+
+  // Handle clean session request from mobile app to reset web session
+  useEffect(() => {
+    if (searchParams.get('clean') === 'true') {
+      logout();
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('clean');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, logout, setSearchParams]);
 
   // If already authenticated, redirect immediately (either to app dashboard or back to mobile app if requested)
   useEffect(() => {
-    if (isAuthenticated && user) {
+    // Only auto-redirect if we are authenticated and not currently processing a clean session request
+    if (isAuthenticated && user && searchParams.get('clean') !== 'true') {
       const savedToken = localStorage.getItem('verikarya_token');
       if (redirectUri && savedToken) {
         const separator = redirectUri.includes('?') ? '&' : '?';
@@ -28,7 +39,7 @@ export const Login = () => {
         navigate('/');
       }
     }
-  }, [isAuthenticated, user, navigate, redirectUri]);
+  }, [isAuthenticated, user, navigate, redirectUri, searchParams]);
 
   const handleRedirect = (token, loggedInUser, userRole) => {
     if (redirectUri) {

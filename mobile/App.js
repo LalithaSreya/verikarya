@@ -1,5 +1,5 @@
-import React, { useContext } from 'react';
-import { SafeAreaView, StatusBar, StyleSheet, View, Text } from 'react-native';
+import React, { useContext, useEffect } from 'react';
+import { SafeAreaView, StatusBar, StyleSheet, View, Text, BackHandler } from 'react-native';
 import { AuthProvider, AuthContext } from './src/context/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
 import EmployeeDashboard from './src/screens/EmployeeDashboard';
@@ -18,13 +18,29 @@ function AppContent() {
     setCurrentScreen({ name: screenName, params });
   };
 
-  const goBack = () => {
+  const goBack = React.useCallback(() => {
     if (history.length > 0) {
       const prev = history[history.length - 1];
       setHistory(history.slice(0, -1));
       setCurrentScreen(prev);
     }
-  };
+  }, [history]);
+
+  // Hook into physical/hardware back button (Android)
+  useEffect(() => {
+    const handleBackPress = () => {
+      if (history.length > 0) {
+        goBack();
+        return true; // prevent default (exiting the app)
+      }
+      return false; // allow default (exit the app)
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    return () => {
+      subscription.remove();
+    };
+  }, [history, goBack]);
 
   if (loading) {
     return (
@@ -89,7 +105,7 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.bg,
   },
   centerContainer: {
     flex: 1,

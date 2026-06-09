@@ -357,7 +357,7 @@ export default function EmployeeDashboard({ navigation }) {
       </View>
 
       {/* Camera modal popup */}
-      <Modal visible={showCamera} animationType="slide">
+      <Modal visible={showCamera} animationType="slide" onRequestClose={() => setShowCamera(false)}>
         <CameraCapture 
           onCapture={handleCameraCapture} 
           onCancel={() => setShowCamera(false)} 
@@ -365,7 +365,7 @@ export default function EmployeeDashboard({ navigation }) {
       </Modal>
 
       {/* Loading Modal overlay during location fetch/punch */}
-      <Modal visible={punchLoading} transparent>
+      <Modal visible={punchLoading} transparent onRequestClose={() => {}}>
         <View style={styles.overlayContainer}>
           <View style={styles.loadingModal}>
             <ActivityIndicator size="large" color={COLORS.primary} />
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderRadius: 16,
     marginHorizontal: 16,
-    marginBottom: Platform.OS === 'ios' ? 24 : 16,
+    marginBottom: Platform.OS === 'ios' ? 32 : 28,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,

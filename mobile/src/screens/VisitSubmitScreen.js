@@ -345,7 +345,7 @@ export default function VisitSubmitScreen({ route, navigation }) {
       )}
 
       {/* Camera modal */}
-      <Modal visible={showCamera} animationType="slide">
+      <Modal visible={showCamera} animationType="slide" onRequestClose={() => setShowCamera(false)}>
         <CameraCapture 
           onCapture={(capturedPhoto) => {
             setPhoto(capturedPhoto);
