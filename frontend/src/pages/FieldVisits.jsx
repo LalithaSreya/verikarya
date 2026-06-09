@@ -300,11 +300,11 @@ export const FieldVisits = () => {
   return (
     <DashboardLayout>
       <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <h2>📍 Field Visit Tracker</h2>
+        <h2>📍 On-Site Audit Tracker</h2>
         <p className="text-muted">
           {isManager
-            ? 'Schedule client audits with target coordinates and monitor workforce locations.'
-            : 'Start field visits, track target ranges, and submit geofenced visit verification proofs.'}
+            ? 'Schedule on-site client audits with target coordinates and monitor security workforce locations.'
+            : 'Start on-site audits, track target ranges, and submit geofenced audit verification proofs.'}
         </p>
       </div>
 
@@ -313,13 +313,13 @@ export const FieldVisits = () => {
         {/* Left Column: Visits List */}
         <div>
           <div className="card">
-            <h3 style={{ marginBottom: 'var(--spacing-md)' }}>Field Visits Schedule</h3>
+            <h3 style={{ marginBottom: 'var(--spacing-md)' }}>On-Site Audits Schedule</h3>
 
             {loading ? (
-              <p className="text-muted">Loading field visits...</p>
+              <p className="text-muted">Loading on-site audits...</p>
             ) : visits.length === 0 ? (
               <p className="text-muted" style={{ padding: 'var(--spacing-lg)', textAlign: 'center' }}>
-                No field visits logged in the system.
+                No on-site audits logged in the system.
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
@@ -411,7 +411,7 @@ export const FieldVisits = () => {
         <div>
           {isManager ? (
             <div className="card">
-              <h3 style={{ marginBottom: 'var(--spacing-md)' }}>➕ Schedule Field Visit</h3>
+              <h3 style={{ marginBottom: 'var(--spacing-md)' }}>➕ Schedule On-Site Audit</h3>
               
               {formError && <div className="alert alert-danger">{formError}</div>}
               {formSuccess && <div className="alert alert-success">{formSuccess}</div>}
@@ -508,18 +508,18 @@ export const FieldVisits = () => {
                   style={{ marginTop: 'var(--spacing-sm)' }}
                   disabled={submittingVisit}
                 >
-                  {submittingVisit ? 'Scheduling...' : 'Assign Field Visit'}
+                  {submittingVisit ? 'Scheduling...' : 'Assign On-Site Audit'}
                 </button>
               </form>
             </div>
           ) : (
             <div className="card" style={{ backgroundColor: 'var(--bg-color)' }}>
-              <h3>🛰️ Field Geofencing Details</h3>
+              <h3>🛰️ Geofenced Audit Details</h3>
               <p className="text-muted" style={{ fontSize: '0.9rem', marginTop: 'var(--spacing-xs)' }}>
-                Field activity verification implements real-time geofence tracking:
+                On-site activity verification implements real-time geofence tracking:
               </p>
               <ul style={{ paddingLeft: 'var(--spacing-md)', fontSize: '0.85rem', marginTop: 'var(--spacing-sm)', display: 'flex', flexDirection: 'column', gap: '8px' }} className="text-muted">
-                <li><b>Visit Initialization:</b> Clicks "Start Visit" to register starting coordinates. This opens the geofence map dashboard.</li>
+                <li><b>Audit Initialization:</b> Clicks "Start Audit" to register starting coordinates. This opens the geofence map dashboard.</li>
                 <li><b>Geofence Boundary:</b> You must move within <b>100 meters</b> of the target coordinates defined by the manager.</li>
                 <li><b>Distance Check:</b> The system calculates your current distance using the browser GPS API. Submissions remain locked outside the 100m range.</li>
                 <li><b>Direct Proof:</b> Match the verification shortcode, open device camera, snap image evidence, and upload.</li>
@@ -548,7 +548,7 @@ export const FieldVisits = () => {
         }}>
           <div className="card" style={{ maxWidth: '500px', width: '100%', maxHeight: '95vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)', borderBottom: '1px solid var(--border-color)', paddingBottom: 'var(--spacing-xs)' }}>
-              <h3 style={{ margin: 0 }}>Field Visit Audit & Geofence Verification</h3>
+              <h3 style={{ margin: 0 }}>On-Site Audit & Geofence Verification</h3>
               <button 
                 onClick={closeSubmitModal} 
                 style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}
@@ -623,7 +623,7 @@ export const FieldVisits = () => {
                 ) : (
                   <div>
                     <p className="text-muted" style={{ marginBottom: 'var(--spacing-md)' }}>
-                      Below is your unique verification code generated for this client visit. You must submit evidence linking this code.
+                      Below is your unique verification code generated for this client audit. You must submit evidence linking this code.
                     </p>
 
                     <div className="verification-code-container">
@@ -738,14 +738,14 @@ export const FieldVisits = () => {
             )}
 
             {/* Step 4: Submission Notes & Upload */}
-            {modalStep === 4 && (
+            {activeVisit.status === 'started' && modalStep === 4 && (
               <div>
                 <p className="text-muted" style={{ marginBottom: 'var(--spacing-md)' }}>
-                  Add field visit log details.
+                  Add on-site audit log details.
                 </p>
 
                 <div className="form-group">
-                  <label className="form-label">Visit Log Notes</label>
+                  <label className="form-label">Audit Log Notes</label>
                   <textarea
                     className="form-input"
                     rows="3"

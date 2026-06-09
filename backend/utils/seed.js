@@ -57,35 +57,56 @@ const seedData = async () => {
     console.log('  Manager:  manager@verikarya.com  / password123');
     console.log('  Employee: employee@verikarya.com / password123');
 
-    // Create a Sample Task
-    const deadlineTask = new Date();
-    deadlineTask.setDate(deadlineTask.getDate() + 3);
-
-    const sampleTask = await Task.create({
-      title: 'Verify Server Racks Installation',
-      description: 'Check the rack mounting in Server Room B, verify backup power cabling, and record device serial numbers.',
+    // Create Sample Tasks (Remote Security Configs)
+    const deadlineTask1 = new Date();
+    deadlineTask1.setDate(deadlineTask1.getDate() + 3);
+    await Task.create({
+      title: 'Configure Corporate Firewall Security Policies',
+      description: 'Apply security configuration updates to the corporate firewall, review blocked outbound traffic ports, and submit configuration snapshot.',
       priority: 'high',
       assignedTo: employee._id,
       assignedBy: manager._id,
-      deadline: deadlineTask
+      deadline: deadlineTask1
     });
 
-    // Create a Sample Field Visit
-    const deadlineVisit = new Date();
-    deadlineVisit.setDate(deadlineVisit.getDate() + 2);
-
-    const sampleVisit = await Visit.create({
-      clientName: 'Apex Technology Solutions',
-      purpose: 'Conduct on-site hardware audit and obtain client sign-off on the deployment phase.',
+    const deadlineTask2 = new Date();
+    deadlineTask2.setDate(deadlineTask2.getDate() + 5);
+    await Task.create({
+      title: 'Audit AWS Cloud Security Configuration Groups',
+      description: 'Perform compliance checks on cloud security groups, verify database ports are not publicly exposed, and upload audit log summary.',
+      priority: 'medium',
       assignedTo: employee._id,
       assignedBy: manager._id,
-      // Default coordinate: Bangalore Central (12.9716, 77.5946)
-      // Can be edited or set in UI
+      deadline: deadlineTask2
+    });
+
+    // Create Sample Field Visits (On-Site Security Audits & Solutions Deployments)
+    const deadlineVisit1 = new Date();
+    deadlineVisit1.setDate(deadlineVisit1.getDate() + 2);
+    await Visit.create({
+      clientName: 'Apex Financial Services',
+      purpose: 'Conduct physical server room security control audit, verify biometric lock status, and log camera coverage coordinates.',
+      assignedTo: employee._id,
+      assignedBy: manager._id,
       targetLocation: {
         lat: 12.9715987,
         lng: 77.5945627
       },
-      deadline: deadlineVisit
+      deadline: deadlineVisit1
+    });
+
+    const deadlineVisit2 = new Date();
+    deadlineVisit2.setDate(deadlineVisit2.getDate() + 4);
+    await Visit.create({
+      clientName: 'Titan Solutions Group',
+      purpose: 'On-site firewall router hardware installation, configure VLAN security isolation zones, and verify gateway routing connectivity.',
+      assignedTo: employee._id,
+      assignedBy: manager._id,
+      targetLocation: {
+        lat: 12.9141,
+        lng: 77.6339
+      },
+      deadline: deadlineVisit2
     });
 
     console.log('Sample tasks and field visits seeded successfully.');

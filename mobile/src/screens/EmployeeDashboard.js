@@ -163,15 +163,15 @@ export default function EmployeeDashboard({ navigation }) {
 
             {/* Dashboard Summary card */}
             <View style={[globalStyles.card, { marginTop: 16 }]}>
-              <Text style={styles.infoTitle}>📊 Daily Tasks Overview</Text>
+              <Text style={styles.infoTitle}>📊 Daily Operations Overview</Text>
               
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Assigned Desk Tasks</Text>
+                <Text style={styles.infoLabel}>Assigned Tasks</Text>
                 <Text style={styles.infoValue}>{tasks.length} pending</Text>
               </View>
 
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Assigned Field Visits</Text>
+                <Text style={styles.infoLabel}>Assigned Field Audits</Text>
                 <Text style={styles.infoValue}>{visits.length} pending</Text>
               </View>
               
@@ -220,7 +220,7 @@ export default function EmployeeDashboard({ navigation }) {
             contentContainerStyle={{ padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           >
-            <Text style={styles.sectionTitle}>📍 Field Client Visits ({visits.length})</Text>
+            <Text style={styles.sectionTitle}>📍 On-Site Audits & Solutions Deployments ({visits.length})</Text>
             {visits.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>No pending field visits assigned.</Text>
@@ -291,7 +291,7 @@ export default function EmployeeDashboard({ navigation }) {
           onPress={() => setActiveTab('visits')}
         >
           <Text style={styles.tabIcon}>📍</Text>
-          <Text style={[styles.tabLabel, activeTab === 'visits' ? styles.activeTabLabel : null]}>Visits</Text>
+          <Text style={[styles.tabLabel, activeTab === 'visits' ? styles.activeTabLabel : null]}>Audits</Text>
         </TouchableOpacity>
       </View>
 

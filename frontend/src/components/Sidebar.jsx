@@ -32,7 +32,7 @@ export const Sidebar = () => {
             to="/visits" 
             className={({ isActive }) => isActive ? "active" : ""}
           >
-            📍 Field Visits
+            📍 On-Site Audits
           </NavLink>
         </li>
 

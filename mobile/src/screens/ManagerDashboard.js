@@ -83,7 +83,7 @@ export default function ManagerDashboard() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.welcomeText}>Manager Hub</Text>
+          <Text style={styles.welcomeText}>Security Lead Hub</Text>
           <Text style={styles.nameText}>{user?.name}</Text>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
@@ -123,7 +123,7 @@ export default function ManagerDashboard() {
             const assigneeName = review.details?.assignedTo?.name || 'Worker';
             const title = review.type === 'task' 
               ? review.details?.title 
-              : `${review.details?.clientName} (Field Visit)`;
+              : `${review.details?.clientName} (On-Site Audit)`;
             
             return (
               <TouchableOpacity

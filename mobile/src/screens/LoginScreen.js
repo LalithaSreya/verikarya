@@ -20,7 +20,7 @@ export default function LoginScreen() {
     try {
       const redirectUri = Linking.createURL('oauth');
       const authUrl = `https://verikarya.vercel.app/login?redirect_uri=${encodeURIComponent(redirectUri)}&role=${role}`;
-      await WebBrowser.openBrowserAsync(authUrl);
+      await Linking.openURL(authUrl);
     } catch (err) {
       setError('Failed to open web browser. Please try again.');
     } finally {
