@@ -465,6 +465,35 @@ export const Tasks = () => {
                   <div className="verification-code-text">{verificationCode}</div>
                 </div>
 
+                {/* Previous Progress Updates Timeline */}
+                {activeTask.progressHistory && activeTask.progressHistory.length > 0 && (
+                  <div style={{ 
+                    marginBottom: 'var(--spacing-md)', 
+                    maxHeight: '150px', 
+                    overflowY: 'auto', 
+                    padding: 'var(--spacing-sm)', 
+                    backgroundColor: 'var(--bg-color)', 
+                    borderRadius: 'var(--border-radius-sm)',
+                    border: '1px solid var(--border-color)',
+                    fontSize: '0.85rem'
+                  }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                      ⏳ Previous Days' Submissions ({activeTask.progressHistory.length})
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {activeTask.progressHistory.map((progress, idx) => (
+                        <div key={idx} style={{ borderLeft: '2px solid var(--primary-color)', paddingLeft: '8px', paddingVertical: '2px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '2px' }}>
+                            <span>Update #{idx + 1}</span>
+                            <span>{new Date(progress.timestamp).toLocaleDateString()}</span>
+                          </div>
+                          <div style={{ color: 'var(--text-main)' }}>{progress.notes || 'Progress update logged.'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="form-group">
                   <label className="form-label">Submission Notes / Comments</label>
                   <textarea
