@@ -207,6 +207,14 @@ export default function VisitSubmitScreen({ route, navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {/* Back button and title */}
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.backBtn} onPress={navigation.goBack}>
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>On-Site Audit Submission</Text>
+      </View>
+
       {/* Map Widget Card */}
       <View style={globalStyles.card}>
         <Text style={[globalStyles.title, { fontSize: 16 }]}>{visit.clientName}</Text>
@@ -352,6 +360,31 @@ export default function VisitSubmitScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 8,
+  },
+  backBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginRight: 12,
+  },
+  backText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textMain,
+  },
   container: {
     padding: 16,
     backgroundColor: COLORS.bg,
