@@ -1,5 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { AuthContext } from '../context/AuthContext';
 import { COLORS, globalStyles } from '../styles/globalStyles';
 
@@ -11,6 +13,20 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const { login } = useContext(AuthContext);
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setSubmitting(true);
+    try {
+      const redirectUri = Linking.createURL('oauth');
+      const authUrl = `https://verikarya.vercel.app/login?redirect_uri=${encodeURIComponent(redirectUri)}&role=${role}`;
+      await WebBrowser.openBrowserAsync(authUrl);
+    } catch (err) {
+      setError('Failed to open web browser. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleLogin = async () => {
     setError('');
@@ -118,6 +134,20 @@ export default function LoginScreen() {
             ) : (
               <Text style={globalStyles.btnText}>Sign In</Text>
             )}
+          </TouchableOpacity>
+
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity 
+            style={styles.googleBtn} 
+            onPress={handleGoogleSignIn}
+            disabled={submitting}
+          >
+            <Text style={styles.googleBtnText}>Sign In with Google</Text>
           </TouchableOpacity>
 
           {/* Helper note */}
@@ -244,5 +274,43 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
     lineHeight: 16,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    paddingHorizontal: 12,
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingVertical: 12,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  googleBtnText: {
+    color: '#1F2937',
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 8,
   },
 });

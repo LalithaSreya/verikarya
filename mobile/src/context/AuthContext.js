@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import * as Linking from 'expo-linking';
 
 export const AuthContext = createContext();
 
@@ -17,6 +18,46 @@ export const api = axios.create({
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const parseAndLogin = async (url) => {
+    try {
+      const parsed = Linking.parse(url);
+      const { queryParams } = parsed;
+      if (queryParams && queryParams.token) {
+        const { token, role, name, email } = queryParams;
+        await AsyncStorage.setItem('verikarya_token', token);
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser({
+          role,
+          name,
+          email
+        });
+      }
+    } catch (err) {
+      console.error('Error parsing deep link auth:', err);
+    }
+  };
+
+  // Listen for deep links (Google Sign-In redirection)
+  useEffect(() => {
+    const handleDeepLink = (event) => {
+      if (event.url) {
+        parseAndLogin(event.url);
+      }
+    };
+
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        parseAndLogin(url);
+      }
+    });
+
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   // Check login on mount
   useEffect(() => {
