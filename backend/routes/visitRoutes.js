@@ -6,7 +6,8 @@ const {
   startVisit,
   requestVisitCode,
   submitVisitEvidence,
-  bypassVisitLocation
+  bypassVisitLocation,
+  saveVisitProgress
 } = require('../controllers/visitController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -19,6 +20,7 @@ router.get('/', getVisits);
 router.get('/:id', getVisitById);
 router.post('/:id/start', authorize('employee'), startVisit);
 router.post('/:id/request-code', authorize('employee'), requestVisitCode);
+router.post('/:id/progress', authorize('employee'), saveVisitProgress);
 router.post('/:id/submit', authorize('employee'), submitVisitEvidence);
 router.put('/:id/bypass-location', authorize('employee'), bypassVisitLocation);
 

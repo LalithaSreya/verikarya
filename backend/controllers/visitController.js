@@ -6,13 +6,14 @@ const Review = require('../models/Review');
 const { isWithinGeofence } = require('../services/locationService');
 const { generateVerificationCode } = require('../utils/codeGenerator');
 const { saveImage } = require('../services/storageService');
+const { sendWhatsAppMessage } = require('../services/whatsappService');
 
 // @desc    Create a new field visit
 // @route   POST /api/visits
 // @access  Private (Manager only)
 const createVisit = async (req, res) => {
   try {
-    const { clientName, purpose, assignedTo, targetLocation, deadline } = req.body;
+    const { clientName, purpose, assignedTo, targetLocation, deadline, clientPhone } = req.body;
 
     if (!clientName || !purpose || !assignedTo || !targetLocation || !deadline) {
       return res.status(400).json({ success: false, error: 'Please provide all required fields' });
@@ -34,7 +35,8 @@ const createVisit = async (req, res) => {
       assignedTo,
       assignedBy: req.user.id,
       targetLocation,
-      deadline
+      deadline,
+      clientPhone
     });
 
     res.status(201).json({
@@ -269,6 +271,30 @@ const submitVisitEvidence = async (req, res) => {
       status: 'pending'
     });
 
+    // Send WhatsApp notification automatically to both Customer and Manager
+    const employeeName = req.user.name || 'our auditor';
+    
+    // 1. Notify Customer
+    if (visit.clientPhone) {
+      try {
+        const msg = `Hello, the audit visit for '${visit.clientName}' has been completed and submitted by ${employeeName} for verification.`;
+        await sendWhatsAppMessage(visit.clientPhone, msg);
+      } catch (err) {
+        console.error('Failed to dispatch WhatsApp message to customer:', err.message);
+      }
+    }
+
+    // 2. Notify Manager
+    try {
+      const manager = await User.findById(visit.assignedBy);
+      if (manager && manager.phone) {
+        const msg = `Hello Manager ${manager.name}, the auditor ${employeeName} has completed and submitted the audit for client '${visit.clientName}'. Verification code is: ${verificationCode}. Please review and approve it.`;
+        await sendWhatsAppMessage(manager.phone, msg);
+      }
+    } catch (err) {
+      console.error('Failed to dispatch WhatsApp message to manager:', err.message);
+    }
+
     res.status(200).json({
       success: true,
       message: 'Field visit evidence submitted successfully. GPS and code validated.',
@@ -313,6 +339,70 @@ const bypassVisitLocation = async (req, res) => {
   }
 };
 
+// @desc    Save partial progress on an audit visit
+// @route   POST /api/visits/:id/progress
+// @access  Private (Employee assignee only)
+const saveVisitProgress = async (req, res) => {
+  try {
+    const { location, photo, notes } = req.body;
+
+    const visit = await Visit.findById(req.params.id);
+
+    if (!visit) {
+      return res.status(404).json({ success: false, error: 'Visit not found' });
+    }
+
+    if (visit.assignedTo.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Not authorized to submit progress for this visit' });
+    }
+
+    // Save image to storage if provided
+    let photoPath = '';
+    if (photo) {
+      photoPath = await saveImage(photo, 'visit-progress');
+    }
+
+    // Geofence check if coordinates are provided
+    let distance = null;
+    if (location && location.lat !== undefined && location.lng !== undefined) {
+      const geofenceResult = isWithinGeofence(
+        location.lat,
+        location.lng,
+        visit.targetLocation.lat,
+        visit.targetLocation.lng,
+        100
+      );
+      distance = geofenceResult.distance;
+    }
+
+    // Add progress update to history
+    visit.progressHistory.push({
+      photoPath: photoPath || undefined,
+      notes: notes || '',
+      location: location || undefined,
+      distance: distance || undefined,
+      timestamp: new Date()
+    });
+
+    // If visit is not started yet, mark it as started
+    if (visit.status === 'pending') {
+      visit.status = 'started';
+      visit.startedAt = new Date();
+      if (location) visit.startLocation = location;
+    }
+
+    await visit.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Visit progress saved successfully',
+      data: visit
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   createVisit,
   getVisits,
@@ -320,6 +410,7 @@ module.exports = {
   startVisit,
   requestVisitCode,
   submitVisitEvidence,
-  bypassVisitLocation
+  bypassVisitLocation,
+  saveVisitProgress
 };
 

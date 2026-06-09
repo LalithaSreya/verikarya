@@ -25,6 +25,7 @@ export const FieldVisits = () => {
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
   const [submittingVisit, setSubmittingVisit] = useState(false);
+  const [clientPhone, setClientPhone] = useState('');
 
   // Employee Submission Modal State
   const [activeVisit, setActiveVisit] = useState(null); // Visit currently being submitted
@@ -86,7 +87,8 @@ export const FieldVisits = () => {
           lat: latNum,
           lng: lngNum
         },
-        deadline
+        deadline,
+        clientPhone
       });
 
       if (res.data.success) {
@@ -98,6 +100,7 @@ export const FieldVisits = () => {
         setTargetLat('');
         setTargetLng('');
         setDeadline('');
+        setClientPhone('');
         // Reload visits
         const visitsRes = await api.get('/visits');
         setVisits(visitsRes.data.data);
@@ -297,6 +300,32 @@ export const FieldVisits = () => {
     }
   };
 
+  // Employee: Save daily progress update
+  const handleSaveProgress = async () => {
+    setModalSubmitting(true);
+    setModalError('');
+    try {
+      const loc = await getLocation();
+
+      const res = await api.post(`/visits/${activeVisit._id}/progress`, {
+        location: loc ? { lat: loc.lat, lng: loc.lng } : null,
+        photo: capturedPhoto || null,
+        notes: submissionNotes
+      });
+
+      if (res.data.success) {
+        closeSubmitModal();
+        // Refresh visits list
+        const visitsRes = await api.get('/visits');
+        setVisits(visitsRes.data.data);
+      }
+    } catch (err) {
+      setModalError(err.response?.data?.error || 'Failed to save daily progress.');
+    } finally {
+      setModalSubmitting(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div style={{ marginBottom: 'var(--spacing-lg)' }}>
@@ -372,6 +401,21 @@ export const FieldVisits = () => {
                         )}
                       </div>
                     </div>
+
+                    {/* Progress History timeline logs */}
+                    {visit.progressHistory && visit.progressHistory.length > 0 && (
+                      <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-sm)', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--border-radius-sm)', fontSize: '0.85rem' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>⏳ Saved Progress Logs ({visit.progressHistory.length})</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {visit.progressHistory.map((progress, idx) => (
+                            <div key={idx} style={{ borderLeft: '2px solid var(--primary-color)', paddingLeft: '6px', fontSize: '0.8rem' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{new Date(progress.timestamp).toLocaleDateString()}: </span>
+                              <span>{progress.notes || 'Progress update logged.'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Employee Actions */}
                     {isEmployee && (
@@ -499,6 +543,17 @@ export const FieldVisits = () => {
                     value={deadline}
                     onChange={(e) => setDeadline(e.target.value)}
                     required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Client WhatsApp Number (Optional)</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. +919876543210"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
                   />
                 </div>
 
@@ -770,9 +825,17 @@ export const FieldVisits = () => {
                   <div><b>Proof Image Attached:</b> {capturedPhoto ? 'Yes' : 'No'}</div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--spacing-lg)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
                   <button className="btn btn-outline" onClick={() => setModalStep(3)}>
-                    Back to Camera
+                    Back
+                  </button>
+                  <button 
+                    type="button"
+                    className="btn btn-outline" 
+                    onClick={handleSaveProgress}
+                    disabled={modalSubmitting}
+                  >
+                    {modalSubmitting ? 'Saving...' : 'Save Daily Progress'}
                   </button>
                   <button 
                     className="btn btn-success" 

@@ -232,6 +232,53 @@ export const ManagerReviews = () => {
                 </div>
               </div>
 
+              {/* Progress History Timeline */}
+              {selectedReview.details?.progressHistory && selectedReview.details.progressHistory.length > 0 && (
+                <div style={{ marginBottom: 'var(--spacing-md)', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--spacing-md)' }}>
+                  <h4 style={{ fontSize: '0.95rem', marginBottom: 'var(--spacing-sm)' }}>
+                    ⏳ Multi-Day Progress Timeline ({selectedReview.details.progressHistory.length})
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+                    {selectedReview.details.progressHistory.map((progress, idx) => (
+                      <div 
+                        key={idx} 
+                        style={{ 
+                          padding: 'var(--spacing-sm)', 
+                          backgroundColor: 'var(--bg-color)', 
+                          borderRadius: 'var(--border-radius-sm)',
+                          fontSize: '0.85rem',
+                          borderLeft: '3px solid var(--primary-color)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontWeight: 600 }}>
+                          <span>Update #{idx + 1}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {new Date(progress.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        {progress.photoPath && (
+                          <img 
+                            src={getPhotoUrl(progress.photoPath)} 
+                            alt={`Progress update #${idx+1}`} 
+                            style={{ 
+                              width: '100%', 
+                              maxHeight: '120px', 
+                              objectFit: 'contain', 
+                              backgroundColor: '#f1f5f9',
+                              borderRadius: '4px',
+                              marginBottom: '6px'
+                            }} 
+                          />
+                        )}
+                        <p style={{ margin: 0, fontStyle: progress.notes ? 'normal' : 'italic' }}>
+                          {progress.notes || 'No comments logged for this day.'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Manager Feedback Form */}
               {filter === 'pending' ? (
                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: 'var(--spacing-md)' }}>

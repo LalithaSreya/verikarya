@@ -5,13 +5,14 @@ const Evidence = require('../models/Evidence');
 const Review = require('../models/Review');
 const { generateVerificationCode } = require('../utils/codeGenerator');
 const { saveImage } = require('../services/storageService');
+const { sendWhatsAppMessage } = require('../services/whatsappService');
 
 // @desc    Create a new task
 // @route   POST /api/tasks
 // @access  Private (Manager only)
 const createTask = async (req, res) => {
   try {
-    const { title, description, assignedTo, priority, deadline } = req.body;
+    const { title, description, assignedTo, priority, deadline, clientPhone } = req.body;
 
     if (!title || !description || !assignedTo || !deadline) {
       return res.status(400).json({ success: false, error: 'Please provide all required fields' });
@@ -29,7 +30,8 @@ const createTask = async (req, res) => {
       assignedTo,
       assignedBy: req.user.id,
       priority,
-      deadline
+      deadline,
+      clientPhone
     });
 
     res.status(201).json({
@@ -234,9 +236,80 @@ const submitTaskEvidence = async (req, res) => {
       status: 'pending'
     });
 
+    // Send WhatsApp notification automatically to both Customer and Manager
+    const employeeName = req.user.name || 'our employee';
+    
+    // 1. Notify Customer
+    if (task.clientPhone) {
+      try {
+        const msg = `Hello, the task '${task.title}' assigned by VeriKarya has been completed and submitted by ${employeeName} for verification.`;
+        await sendWhatsAppMessage(task.clientPhone, msg);
+      } catch (err) {
+        console.error('Failed to dispatch WhatsApp message to customer:', err.message);
+      }
+    }
+
+    // 2. Notify Manager
+    try {
+      const manager = await User.findById(task.assignedBy);
+      if (manager && manager.phone) {
+        const msg = `Hello Manager ${manager.name}, the employee ${employeeName} has completed and submitted the task: '${task.title}'. Verification code is: ${verificationCode}. Please review and approve it.`;
+        await sendWhatsAppMessage(manager.phone, msg);
+      }
+    } catch (err) {
+      console.error('Failed to dispatch WhatsApp message to manager:', err.message);
+    }
+
     res.status(200).json({
       success: true,
       message: 'Task evidence submitted successfully',
+      data: task
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// @desc    Save partial progress on a task
+// @route   POST /api/tasks/:id/progress
+// @access  Private (Employee assignee only)
+const saveTaskProgress = async (req, res) => {
+  try {
+    const { photo, notes } = req.body;
+
+    const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ success: false, error: 'Task not found' });
+    }
+
+    if (task.assignedTo.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Not authorized to submit progress for this task' });
+    }
+
+    // Save image to storage if provided
+    let photoPath = '';
+    if (photo) {
+      photoPath = await saveImage(photo, 'task-progress');
+    }
+
+    // Add progress update to history
+    task.progressHistory.push({
+      photoPath: photoPath || undefined,
+      notes: notes || '',
+      timestamp: new Date()
+    });
+
+    // Update status to in_progress if currently pending
+    if (task.status === 'pending') {
+      task.status = 'in_progress';
+    }
+
+    await task.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Task progress saved successfully',
       data: task
     });
   } catch (error) {
@@ -250,5 +323,6 @@ module.exports = {
   getTaskById,
   updateTaskStatus,
   requestTaskCode,
-  submitTaskEvidence
+  submitTaskEvidence,
+  saveTaskProgress
 };

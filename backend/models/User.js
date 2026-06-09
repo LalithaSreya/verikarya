@@ -29,6 +29,9 @@ const UserSchema = new mongoose.Schema({
     enum: ['employee', 'manager'],
     default: 'employee'
   },
+  phone: {
+    type: String
+  },
   officeLocation: {
     lat: {
       type: Number,

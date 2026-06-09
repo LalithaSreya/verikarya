@@ -61,6 +61,22 @@ const VisitSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Evidence'
   },
+  clientPhone: {
+    type: String
+  },
+  progressHistory: [{
+    photoPath: String,
+    notes: String,
+    location: {
+      lat: Number,
+      lng: Number
+    },
+    distance: Number,
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now

@@ -41,6 +41,17 @@ const TaskSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Evidence'
   },
+  clientPhone: {
+    type: String
+  },
+  progressHistory: [{
+    photoPath: String,
+    notes: String,
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now

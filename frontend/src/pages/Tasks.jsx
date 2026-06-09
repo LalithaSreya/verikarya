@@ -21,6 +21,7 @@ export const Tasks = () => {
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
   const [submittingTask, setSubmittingTask] = useState(false);
+  const [clientPhone, setClientPhone] = useState('');
 
   // Employee Verification Modal State
   const [activeTask, setActiveTask] = useState(null); // Task currently being verified
@@ -73,7 +74,8 @@ export const Tasks = () => {
         description,
         assignedTo,
         priority,
-        deadline
+        deadline,
+        clientPhone
       });
 
       if (res.data.success) {
@@ -84,6 +86,7 @@ export const Tasks = () => {
         setAssignedTo('');
         setPriority('medium');
         setDeadline('');
+        setClientPhone('');
         // Reload tasks
         const tasksRes = await api.get('/tasks');
         setTasks(tasksRes.data.data);
@@ -180,6 +183,29 @@ export const Tasks = () => {
     }
   };
 
+  // Employee: Save daily progress update
+  const handleSaveProgress = async () => {
+    setModalSubmitting(true);
+    setModalError('');
+    try {
+      const res = await api.post(`/tasks/${activeTask._id}/progress`, {
+        photo: capturedPhoto || null,
+        notes: submissionNotes
+      });
+
+      if (res.data.success) {
+        closeVerificationModal();
+        // Refresh task list
+        const tasksRes = await api.get('/tasks');
+        setTasks(tasksRes.data.data);
+      }
+    } catch (err) {
+      setModalError(err.response?.data?.error || 'Failed to save daily progress.');
+    } finally {
+      setModalSubmitting(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div style={{ marginBottom: 'var(--spacing-lg)' }}>
@@ -237,6 +263,21 @@ export const Tasks = () => {
                         <b>Due: </b>{new Date(task.deadline).toLocaleDateString()}
                       </div>
                     </div>
+
+                    {/* Progress History timeline logs */}
+                    {task.progressHistory && task.progressHistory.length > 0 && (
+                      <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-sm)', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--border-radius-sm)', fontSize: '0.85rem' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>⏳ Saved Progress Logs ({task.progressHistory.length})</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {task.progressHistory.map((progress, idx) => (
+                            <div key={idx} style={{ borderLeft: '2px solid var(--primary-color)', paddingLeft: '6px', fontSize: '0.8rem' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{new Date(progress.timestamp).toLocaleDateString()}: </span>
+                              <span>{progress.notes || 'Progress update logged.'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Employee Actions */}
                     {isEmployee && (
@@ -343,6 +384,17 @@ export const Tasks = () => {
                   </div>
                 </div>
 
+                <div className="form-group">
+                  <label className="form-label">Client WhatsApp Number (Optional)</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. +919876543210"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                  />
+                </div>
+
                 <button 
                   type="submit" 
                   className="btn btn-primary btn-block"
@@ -442,8 +494,17 @@ export const Tasks = () => {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--spacing-lg)' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
                   <button 
+                    type="button"
+                    className="btn btn-outline" 
+                    onClick={handleSaveProgress}
+                    disabled={modalSubmitting}
+                  >
+                    {modalSubmitting ? 'Saving...' : 'Save Daily Progress'}
+                  </button>
+                  <button 
+                    type="button"
                     className="btn btn-success" 
                     onClick={handleVerifySubmit}
                     disabled={modalSubmitting}
