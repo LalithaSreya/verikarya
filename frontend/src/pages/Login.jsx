@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -11,15 +11,34 @@ export const Login = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { login, loginWithGoogle, isAuthenticated } = useAuth();
+  const { login, loginWithGoogle, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectUri = searchParams.get('redirect_uri');
 
-  // If already authenticated, redirect immediately
+  // If already authenticated, redirect immediately (either to app dashboard or back to mobile app if requested)
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user) {
+      const savedToken = localStorage.getItem('verikarya_token');
+      if (redirectUri && savedToken) {
+        const separator = redirectUri.includes('?') ? '&' : '?';
+        const redirectUrl = `${redirectUri}${separator}token=${encodeURIComponent(savedToken)}&role=${encodeURIComponent(user.role)}&name=${encodeURIComponent(user.name)}&email=${encodeURIComponent(user.email)}`;
+        window.location.href = redirectUrl;
+      } else {
+        navigate('/');
+      }
+    }
+  }, [isAuthenticated, user, navigate, redirectUri]);
+
+  const handleRedirect = (token, loggedInUser, userRole) => {
+    if (redirectUri) {
+      const separator = redirectUri.includes('?') ? '&' : '?';
+      const redirectUrl = `${redirectUri}${separator}token=${encodeURIComponent(token)}&role=${encodeURIComponent(userRole)}&name=${encodeURIComponent(loggedInUser.name)}&email=${encodeURIComponent(loggedInUser.email)}`;
+      window.location.href = redirectUrl;
+    } else {
       navigate('/');
     }
-  }, [isAuthenticated, navigate]);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,7 +53,7 @@ export const Login = () => {
     try {
       const res = await login(email, password);
       if (res.success) {
-        navigate('/');
+        handleRedirect(res.token, res.user, res.user.role);
       } else {
         setError(res.error || 'Login failed. Please check your credentials.');
       }
@@ -51,7 +70,7 @@ export const Login = () => {
     try {
       const res = await loginWithGoogle(credentialResponse.credential, role);
       if (res.success) {
-        navigate('/');
+        handleRedirect(res.token, res.user, res.user.role);
       } else {
         setError(res.error || 'Google Login failed. Please check your credentials.');
       }

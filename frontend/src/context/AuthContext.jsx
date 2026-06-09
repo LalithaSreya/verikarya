@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }) => {
       if (res.data.success) {
         localStorage.setItem('verikarya_token', res.data.token);
         setUser(res.data.user);
-        return { success: true };
+        return { success: true, token: res.data.token, user: res.data.user };
       }
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Invalid email or password';
@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }) => {
       if (res.data.success) {
         localStorage.setItem('verikarya_token', res.data.token);
         setUser(res.data.user);
-        return { success: true };
+        return { success: true, token: res.data.token, user: res.data.user };
       }
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Google authentication failed';
