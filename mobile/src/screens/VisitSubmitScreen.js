@@ -20,6 +20,20 @@ export default function VisitSubmitScreen({ route, navigation }) {
   const [verificationCode, setVerificationCode] = useState('');
   const [showCamera, setShowCamera] = useState(false);
 
+  const getBackendUrl = () => {
+    const base = api.defaults.baseURL || 'https://verikarya.onrender.com/api';
+    return base.endsWith('/api') ? base.slice(0, -4) : base;
+  };
+
+  const getPhotoUrl = (photoPath) => {
+    if (!photoPath) return null;
+    if (photoPath.startsWith('http://') || photoPath.startsWith('https://') || photoPath.startsWith('data:')) {
+      return photoPath;
+    }
+    const backend = getBackendUrl();
+    return `${backend}${photoPath}`;
+  };
+
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371000; // Radius of the earth in m
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -54,33 +68,33 @@ export default function VisitSubmitScreen({ route, navigation }) {
     }
   };
 
-  useEffect(() => {
-    const fetchVisitAndLoc = async () => {
-      try {
-        const res = await api.get('/visits');
-        const found = res.data.data.find(v => v._id === visitId);
-        setVisit(found);
-        
-        if (found) {
-          if (found.targetLocation) {
-            await trackUserLocation(found.targetLocation.lat, found.targetLocation.lng);
-          }
-          if (found.status === 'started') {
-            const codeRes = await api.post(`/visits/${visitId}/request-code`);
-            if (codeRes.data.success) {
-              setVerificationCode(codeRes.data.code);
-            }
+  const fetchVisitDetails = async () => {
+    try {
+      const res = await api.get('/visits');
+      const found = res.data.data.find(v => v._id === visitId);
+      setVisit(found);
+      
+      if (found) {
+        if (found.targetLocation) {
+          await trackUserLocation(found.targetLocation.lat, found.targetLocation.lng);
+        }
+        if (found.status === 'started') {
+          const codeRes = await api.post(`/visits/${visitId}/request-code`);
+          if (codeRes.data.success) {
+            setVerificationCode(codeRes.data.code);
           }
         }
-      } catch (err) {
-        console.error('Error in fetch:', err);
-        alert('Failed to load visit details.');
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (err) {
+      console.error('Error in fetch:', err);
+      alert('Failed to load visit details.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchVisitAndLoc();
+  useEffect(() => {
+    fetchVisitDetails();
   }, [visitId]);
 
   const handleStartVisit = async () => {
@@ -187,6 +201,41 @@ export default function VisitSubmitScreen({ route, navigation }) {
     }
   };
 
+  const handleSaveProgress = async () => {
+    setSubmitting(true);
+    try {
+      const payload = {
+        photo: photo || null,
+        notes: notes.trim()
+      };
+      
+      if (userLoc) {
+        payload.location = {
+          lat: userLoc.lat,
+          lng: userLoc.lng
+        };
+      }
+
+      const res = await api.post(`/visits/${visitId}/progress`, payload);
+
+      if (res.data.success) {
+        alert('Daily progress saved successfully!');
+        setVisit(res.data.data);
+        setPhoto(null);
+        setNotes('');
+        // Re-calculate geofence values just in case
+        if (res.data.data.targetLocation && userLoc) {
+          const dist = calculateDistance(userLoc.lat, userLoc.lng, res.data.data.targetLocation.lat, res.data.data.targetLocation.lng);
+          setDistance(dist);
+        }
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to save progress.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -212,7 +261,7 @@ export default function VisitSubmitScreen({ route, navigation }) {
         <TouchableOpacity style={styles.backBtn} onPress={navigation.goBack}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>On-Site Audit Submission</Text>
+        <Text style={styles.headerTitle}>On-Site Audit Workspace</Text>
       </View>
 
       {/* Map Widget Card */}
@@ -301,7 +350,7 @@ export default function VisitSubmitScreen({ route, navigation }) {
           )}
 
           <View style={[globalStyles.inputGroup, { marginTop: 16 }]}>
-            <Text style={globalStyles.label}>Execution Notes (Optional)</Text>
+            <Text style={globalStyles.label}>Execution Notes / Remarks</Text>
             <TextInput
               style={[globalStyles.input, { height: 80, textAlignVertical: 'top' }]}
               placeholder="Add comments, client sign-off remarks, or deliverables..."
@@ -313,17 +362,28 @@ export default function VisitSubmitScreen({ route, navigation }) {
             />
           </View>
 
-          <TouchableOpacity 
-            style={[globalStyles.btn, !isWithinGeofence ? { backgroundColor: COLORS.textMuted } : null]} 
-            onPress={handleSubmit}
-            disabled={submitting || !isWithinGeofence}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={globalStyles.btnText}>Submit Visit Evidence</Text>
-            )}
-          </TouchableOpacity>
+          {/* Action Buttons Row */}
+          <View style={styles.btnRow}>
+            <TouchableOpacity 
+              style={[globalStyles.btn, styles.progressBtn]} 
+              onPress={handleSaveProgress}
+              disabled={submitting}
+            >
+              <Text style={styles.progressBtnText}>Save Progress</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[globalStyles.btn, styles.completeBtn, !isWithinGeofence ? { backgroundColor: COLORS.textMuted } : null]} 
+              onPress={handleSubmit}
+              disabled={submitting || !isWithinGeofence}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={globalStyles.btnText}>Complete Visit</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
           {/* Testing Bypass Option */}
           {!isWithinGeofence && distance !== null && (
@@ -341,6 +401,42 @@ export default function VisitSubmitScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
           )}
+        </View>
+      )}
+
+      {/* Previous Submissions History List */}
+      {visit && visit.progressHistory && visit.progressHistory.length > 0 && (
+        <View style={globalStyles.card}>
+          <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 12 }]}>
+            ⏳ Previous Days' Submissions ({visit.progressHistory.length})
+          </Text>
+          <View style={styles.timeline}>
+            {visit.progressHistory.map((progress, idx) => (
+              <View key={idx} style={styles.timelineItem}>
+                <View style={styles.timelineBullet} />
+                <View style={styles.timelineContent}>
+                  <View style={styles.timelineHeader}>
+                    <Text style={styles.timelineIndex}>Update #{idx + 1}</Text>
+                    <Text style={styles.timelineTime}>
+                      {new Date(progress.timestamp).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text style={styles.timelineNotes}>{progress.notes || 'Progress update logged.'}</Text>
+                  {progress.distance !== undefined && (
+                    <Text style={styles.timelineMeta}>
+                      GPS Accuracy: {progress.distance}m from target coordinates
+                    </Text>
+                  )}
+                  {progress.photoPath ? (
+                    <Image 
+                      source={{ uri: getPhotoUrl(progress.photoPath) }} 
+                      style={styles.timelinePhoto} 
+                    />
+                  ) : null}
+                </View>
+              </View>
+            ))}
+          </View>
         </View>
       )}
 
@@ -428,7 +524,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cameraPlaceholder: {
-    height: 160,
+    height: 140,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -439,7 +535,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   cameraPlaceholderText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: COLORS.primary,
     marginBottom: 6,
@@ -474,5 +570,83 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
+  },
+  btnRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 8,
+  },
+  progressBtn: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  progressBtnText: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  completeBtn: {
+    flex: 1.2,
+    backgroundColor: COLORS.success || '#10B981',
+  },
+  timeline: {
+    marginTop: 4,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    minHeight: 80,
+  },
+  timelineBullet: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.primary,
+    marginTop: 6,
+    marginRight: 12,
+    zIndex: 2,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingBottom: 16,
+    borderLeftWidth: 1.5,
+    borderLeftColor: COLORS.border,
+    paddingLeft: 12,
+    marginLeft: -17, // Shift overlap to center bullet on line
+  },
+  timelineHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  timelineIndex: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textMain,
+  },
+  timelineTime: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+  },
+  timelineNotes: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    lineHeight: 18,
+  },
+  timelineMeta: {
+    fontSize: 11,
+    color: COLORS.secondary,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  timelinePhoto: {
+    width: 120,
+    height: 90,
+    borderRadius: 6,
+    marginTop: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
 });

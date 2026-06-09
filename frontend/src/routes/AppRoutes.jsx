@@ -8,6 +8,7 @@ import Tasks from '../pages/Tasks';
 import FieldVisits from '../pages/FieldVisits';
 import ManagerReviews from '../pages/ManagerReviews';
 import AttendanceHistory from '../pages/AttendanceHistory';
+import WhatsAppLogs from '../pages/WhatsAppLogs';
 
 export const AppRoutes = () => {
   return (
@@ -58,6 +59,15 @@ export const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['manager']}>
             <AttendanceHistory />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/whatsapp-logs" 
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <WhatsAppLogs />
           </ProtectedRoute>
         } 
       />

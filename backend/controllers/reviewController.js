@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Review = require('../models/Review');
 const Task = require('../models/Task');
 const Visit = require('../models/Visit');
@@ -181,8 +182,33 @@ const getAnalytics = async (req, res) => {
   }
 };
 
+// @desc    Get all simulated WhatsApp logs
+// @route   GET /api/reviews/whatsapp-logs
+// @access  Private (Manager only)
+const getWhatsAppLogs = async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(500).json({ success: false, error: 'Database not connected' });
+    }
+    const logs = await mongoose.connection.db
+      .collection('whatsapp_logs')
+      .find({})
+      .sort({ timestamp: -1 })
+      .toArray();
+
+    res.status(200).json({
+      success: true,
+      count: logs.length,
+      data: logs
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   getReviews,
   submitReview,
-  getAnalytics
+  getAnalytics,
+  getWhatsAppLogs
 };

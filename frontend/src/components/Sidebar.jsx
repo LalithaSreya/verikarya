@@ -54,6 +54,14 @@ export const Sidebar = () => {
                 📅 Attendance Logs
               </NavLink>
             </li>
+            <li className="sidebar-item">
+              <NavLink 
+                to="/whatsapp-logs" 
+                className={({ isActive }) => isActive ? "active" : ""}
+              >
+                💬 WhatsApp Logs
+              </NavLink>
+            </li>
           </>
         )}
       </ul>
