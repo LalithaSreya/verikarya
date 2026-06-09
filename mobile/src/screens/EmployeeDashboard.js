@@ -19,6 +19,7 @@ export default function EmployeeDashboard({ navigation }) {
   const [cameraMode, setCameraMode] = useState('in'); // 'in' | 'out'
   const [punchLoading, setPunchLoading] = useState(false);
   const [punchMessage, setPunchMessage] = useState('');
+  const [bypassLoading, setBypassLoading] = useState(false);
 
   const loadDashboardData = async () => {
     try {
@@ -107,6 +108,33 @@ export default function EmployeeDashboard({ navigation }) {
       setPunchLoading(false);
       setPunchMessage('');
     }
+  const handleBypassOfficeLocation = async () => {
+    setBypassLoading(true);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Permission to access location was denied. Location is required.');
+        setBypassLoading(false);
+        return;
+      }
+      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const { latitude, longitude } = location.coords;
+
+      const res = await api.put('/auth/office-location', {
+        location: {
+          lat: latitude,
+          lng: longitude
+        }
+      });
+
+      if (res.data.success) {
+        alert('Office location successfully updated to your current coordinates! You can now clock in/out.');
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to update office location.');
+    } finally {
+      setBypassLoading(false);
+    }
   };
 
   const formatTime = (dateStr) => {
@@ -170,6 +198,23 @@ export default function EmployeeDashboard({ navigation }) {
                     disabled={punchLoading}
                   >
                     <Text style={globalStyles.btnText}>Clock-In</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Testing Bypass Option */}
+              {!isShiftDone && (
+                <View style={{ marginTop: 16, borderTopWidth: 1, borderColor: COLORS.border, paddingTop: 16 }}>
+                  <TouchableOpacity 
+                    style={[globalStyles.btn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.primary }]} 
+                    onPress={handleBypassOfficeLocation}
+                    disabled={bypassLoading}
+                  >
+                    {bypassLoading ? (
+                      <ActivityIndicator color={COLORS.primary} size="small" />
+                    ) : (
+                      <Text style={[globalStyles.btnText, { color: COLORS.primary }]}>🔧 Testing Bypass: Set Current GPS as Office</Text>
+                    )}
                   </TouchableOpacity>
                 </View>
               )}
