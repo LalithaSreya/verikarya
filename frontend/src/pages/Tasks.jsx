@@ -200,7 +200,11 @@ export const Tasks = () => {
         setTasks(tasksRes.data.data);
       }
     } catch (err) {
-      setModalError(err.response?.data?.error || 'Failed to save daily progress.');
+      if (err.response?.status === 404) {
+        setModalError('API Endpoint not deployed on Render yet. Render is still building the new code. Please wait 2-3 minutes, or test on http://localhost:5173.');
+      } else {
+        setModalError(err.response?.data?.error || 'Failed to save daily progress.');
+      }
     } finally {
       setModalSubmitting(false);
     }
