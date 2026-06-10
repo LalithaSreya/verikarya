@@ -400,7 +400,8 @@ export const FieldVisits = () => {
                           </div>
                         )}
                       </div>
-                                  {/* Progress History timeline logs */}
+                    </div>
+                                    {/* Progress History timeline logs */}
                     {visit.progressHistory && visit.progressHistory.length > 0 && (
                       <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-sm)', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--border-radius-sm)', fontSize: '0.85rem' }}>
                         <div style={{ fontWeight: 'bold', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>⏳ Saved Progress Logs ({visit.progressHistory.length})</div>
