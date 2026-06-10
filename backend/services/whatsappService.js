@@ -36,19 +36,8 @@ const sendWhatsAppMessage = async (to, message) => {
   console.log(`Message: "${message}"`);
   console.log(`==================================================\n`);
 
-  // Log to database dynamically
-  try {
-    if (mongoose.connection.readyState === 1) {
-      await mongoose.connection.db.collection('whatsapp_logs').insertOne({
-        to: formattedTo,
-        message,
-        status: 'sent',
-        timestamp: new Date()
-      });
-    }
-  } catch (err) {
-    console.error('Failed to save WhatsApp notification log in database:', err.message);
-  }
+  let status = 'sent';
+  let twilioError = null;
 
   // Twilio Production WhatsApp Integration
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -67,10 +56,27 @@ const sendWhatsAppMessage = async (to, message) => {
       });
       console.log('[TWILIO SUCCESS] Message SID:', response.sid);
     } catch (error) {
+      status = 'failed';
+      twilioError = error.message;
       console.error('[TWILIO ERROR] Dispatch failure:', error.message);
     }
   } else {
     console.log('[WHATSAPP SERVICE] Twilio credentials not fully configured. Operating in Simulation Mode.');
+  }
+
+  // Log to database dynamically with actual status and error info
+  try {
+    if (mongoose.connection.readyState === 1) {
+      await mongoose.connection.db.collection('whatsapp_logs').insertOne({
+        to: formattedTo,
+        message,
+        status: status,
+        error: twilioError,
+        timestamp: new Date()
+      });
+    }
+  } catch (err) {
+    console.error('Failed to save WhatsApp notification log in database:', err.message);
   }
 };
 
