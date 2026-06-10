@@ -28,6 +28,7 @@ export default function ManagerDashboard() {
   const [taskDesc, setTaskDesc] = useState('');
   const [taskPriority, setTaskPriority] = useState('medium'); // 'low' | 'medium' | 'high'
   const [taskDeadline, setTaskDeadline] = useState(''); // YYYY-MM-DD
+  const [taskClientPhone, setTaskClientPhone] = useState('');
   
   // Audit form inputs
   const [auditClient, setAuditClient] = useState('');
@@ -35,6 +36,7 @@ export default function ManagerDashboard() {
   const [auditLat, setAuditLat] = useState('');
   const [auditLng, setAuditLng] = useState('');
   const [auditDeadline, setAuditDeadline] = useState(''); // YYYY-MM-DD
+  const [auditClientPhone, setAuditClientPhone] = useState('');
 
   const loadAllData = async () => {
     try {
@@ -108,12 +110,14 @@ export default function ManagerDashboard() {
         description: taskDesc.trim(),
         assignedTo: selectedEmployee._id,
         priority: taskPriority,
-        deadline: taskDeadline
+        deadline: taskDeadline,
+        clientPhone: taskClientPhone.trim()
       });
       if (res.data.success) {
         alert('Compliance Task assigned successfully!');
         setTaskTitle('');
         setTaskDesc('');
+        setTaskClientPhone('');
         setSelectedEmployee(null);
         loadAllData();
       }
@@ -142,7 +146,8 @@ export default function ManagerDashboard() {
           lat: latVal,
           lng: lngVal
         },
-        deadline: auditDeadline
+        deadline: auditDeadline,
+        clientPhone: auditClientPhone.trim()
       });
       if (res.data.success) {
         alert('On-Site Audit scheduled successfully!');
@@ -150,6 +155,7 @@ export default function ManagerDashboard() {
         setAuditPurpose('');
         setAuditLat('');
         setAuditLng('');
+        setAuditClientPhone('');
         setSelectedEmployee(null);
         loadAllData();
       }
@@ -311,6 +317,16 @@ export default function ManagerDashboard() {
                 onChangeText={setTaskDeadline}
               />
             </View>
+            <View style={globalStyles.inputGroup}>
+              <Text style={globalStyles.label}>Client WhatsApp Number</Text>
+              <TextInput 
+                style={globalStyles.input}
+                placeholder="e.g. +919876543210 or 9876543210"
+                keyboardType="phone-pad"
+                value={taskClientPhone}
+                onChangeText={setTaskClientPhone}
+              />
+            </View>
 
             <TouchableOpacity 
               style={[globalStyles.btn, { marginTop: 12 }]}
@@ -373,6 +389,16 @@ export default function ManagerDashboard() {
                 placeholder="YYYY-MM-DD"
                 value={auditDeadline}
                 onChangeText={setAuditDeadline}
+              />
+            </View>
+            <View style={globalStyles.inputGroup}>
+              <Text style={globalStyles.label}>Client WhatsApp Number</Text>
+              <TextInput 
+                style={globalStyles.input}
+                placeholder="e.g. +919876543210 or 9876543210"
+                keyboardType="phone-pad"
+                value={auditClientPhone}
+                onChangeText={setAuditClientPhone}
               />
             </View>
 

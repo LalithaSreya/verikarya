@@ -19,12 +19,41 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const getQueryParams = (url) => {
+    let queryParams = {};
+    try {
+      const match = url.match(/\?(.*)/);
+      if (match && match[1]) {
+        const queryString = match[1];
+        const pairs = queryString.split('&');
+        for (const pair of pairs) {
+          const [key, value] = pair.split('=');
+          if (key) {
+            queryParams[decodeURIComponent(key)] = decodeURIComponent(value || '');
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error in manual query parsing:', e);
+    }
+    return queryParams;
+  };
+
   const parseAndLogin = async (url) => {
     try {
+      console.log('Received deep link url:', url);
       const parsed = Linking.parse(url);
-      const { queryParams } = parsed;
+      let queryParams = parsed.queryParams;
+      
+      // Fallback if queryParams is empty or lacks token
+      if (!queryParams || !queryParams.token) {
+        console.log('Using manual query parameter parser fallback...');
+        queryParams = getQueryParams(url);
+      }
+
       if (queryParams && queryParams.token) {
         const { token, role, name, email } = queryParams;
+        console.log('Deep link auth successful for:', email, 'role:', role);
         await AsyncStorage.setItem('verikarya_token', token);
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         setUser({
@@ -32,6 +61,8 @@ export const AuthProvider = ({ children }) => {
           name,
           email
         });
+      } else {
+        console.log('Deep link URL did not contain valid login token');
       }
     } catch (err) {
       console.error('Error parsing deep link auth:', err);

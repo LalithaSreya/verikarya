@@ -10,6 +10,7 @@ export const Login = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [appRedirectUrl, setAppRedirectUrl] = useState('');
 
   const { login, loginWithGoogle, isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
@@ -34,6 +35,8 @@ export const Login = () => {
       if (redirectUri && savedToken) {
         const separator = redirectUri.includes('?') ? '&' : '?';
         const redirectUrl = `${redirectUri}${separator}token=${encodeURIComponent(savedToken)}&role=${encodeURIComponent(user.role)}&name=${encodeURIComponent(user.name)}&email=${encodeURIComponent(user.email)}`;
+        setAppRedirectUrl(redirectUrl);
+        // Try auto-redirect, but fallback button will be shown on page
         window.location.href = redirectUrl;
       } else {
         navigate('/');
@@ -45,6 +48,8 @@ export const Login = () => {
     if (redirectUri) {
       const separator = redirectUri.includes('?') ? '&' : '?';
       const redirectUrl = `${redirectUri}${separator}token=${encodeURIComponent(token)}&role=${encodeURIComponent(userRole)}&name=${encodeURIComponent(loggedInUser.name)}&email=${encodeURIComponent(loggedInUser.email)}`;
+      setAppRedirectUrl(redirectUrl);
+      // Try auto-redirect, but fallback button will be shown on page
       window.location.href = redirectUrl;
     } else {
       navigate('/');
@@ -135,6 +140,45 @@ export const Login = () => {
   const handleGoogleError = () => {
     setError('Google Authentication failed. Please try again.');
   };
+
+  if (appRedirectUrl) {
+    return (
+      <div className="login-page">
+        <div className="login-card" style={{ textAlign: 'center', padding: 'var(--spacing-xl)' }}>
+          <div className="login-logo">
+            <div className="login-logo-icon" style={{ backgroundColor: 'var(--success-color, #10B981)', color: '#FFFFFF' }}>✓</div>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '16px 0 8px 0', color: 'var(--text-main)' }}>
+              Successfully Authenticated!
+            </h1>
+            <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: 'var(--spacing-lg)' }}>
+              You have successfully logged in. Click the button below to return to the mobile app.
+            </p>
+          </div>
+
+          <a
+            href={appRedirectUrl}
+            className="btn btn-primary btn-block"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textDecoration: 'none',
+              padding: '12px 24px',
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              marginTop: 'var(--spacing-md)'
+            }}
+          >
+            🚀 Return to Mobile App
+          </a>
+
+          <p className="text-muted" style={{ fontSize: '0.75rem', marginTop: 'var(--spacing-lg)' }}>
+            If the app does not open automatically, tapping the button above will launch it.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-page">

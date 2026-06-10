@@ -10,6 +10,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('employee'); // 'employee' | 'manager'
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const { login } = useContext(AuthContext);
@@ -116,12 +117,28 @@ export default function LoginScreen() {
             <TextInput
               style={globalStyles.input}
               placeholder="••••••••"
-              secureTextEntry
+              secureTextEntry={!showPassword}
               autoCapitalize="none"
               value={password}
               onChangeText={setPassword}
               disabled={submitting}
             />
+            <TouchableOpacity 
+              style={styles.showPasswordRow}
+              onPress={() => setShowPassword(!showPassword)}
+              disabled={submitting}
+              activeOpacity={0.7}
+            >
+              <View style={[
+                styles.checkbox, 
+                showPassword && styles.checkboxChecked
+              ]}>
+                {showPassword && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.showPasswordText}>
+                Show Password
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity 
@@ -312,5 +329,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginLeft: 8,
+  },
+  showPasswordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: 'bold',
+    lineHeight: 14,
+  },
+  showPasswordText: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginLeft: 8,
+    fontWeight: '500',
   },
 });
