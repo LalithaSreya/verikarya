@@ -161,6 +161,17 @@ const requestTaskCode = async (req, res) => {
       generatedFor: req.user.id
     });
 
+    // Automatically send verification code to customer via WhatsApp if clientPhone exists
+    if (task.clientPhone) {
+      try {
+        const msg = `Hello! Your verification code for the task '${task.title}' is: ${codeString}. Please share this code with the employee to verify task completion.`;
+        await sendWhatsAppMessage(task.clientPhone, msg);
+        console.log(`[WHATSAPP] Sent verification code ${codeString} to customer ${task.clientPhone}`);
+      } catch (err) {
+        console.error('Failed to send verification code WhatsApp message to customer:', err.message);
+      }
+    }
+
     res.status(200).json({
       success: true,
       code: codeString

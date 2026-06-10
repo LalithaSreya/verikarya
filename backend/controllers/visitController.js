@@ -169,6 +169,17 @@ const requestVisitCode = async (req, res) => {
       generatedFor: req.user.id
     });
 
+    // Automatically send verification code to customer via WhatsApp if clientPhone exists
+    if (visit.clientPhone) {
+      try {
+        const msg = `Hello! Your verification code for the audit visit of '${visit.clientName}' is: ${codeString}. Please share this code with the auditor to verify the visit.`;
+        await sendWhatsAppMessage(visit.clientPhone, msg);
+        console.log(`[WHATSAPP] Sent verification code ${codeString} to client ${visit.clientPhone}`);
+      } catch (err) {
+        console.error('Failed to send verification code WhatsApp message to client:', err.message);
+      }
+    }
+
     res.status(200).json({
       success: true,
       code: codeString

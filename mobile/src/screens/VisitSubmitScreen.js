@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Image,
 import { api } from '../context/AuthContext';
 import { COLORS, globalStyles } from '../styles/globalStyles';
 import CameraCapture from '../components/CameraCapture';
+import * as ImagePicker from 'expo-image-picker';
 import MapWidget from '../components/MapWidget';
 import * as Location from 'expo-location';
 
@@ -19,6 +20,31 @@ export default function VisitSubmitScreen({ route, navigation }) {
   const [bypassLoading, setBypassLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [showCamera, setShowCamera] = useState(false);
+
+  const handlePickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Permission to access library was denied. We need gallery permissions to select photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0].base64) {
+        setPhoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      }
+    } catch (err) {
+      console.error('Error picking image:', err);
+      alert('Failed to pick an image from gallery.');
+    }
+  };
 
   const getBackendUrl = () => {
     const base = api.defaults.baseURL || 'https://verikarya.onrender.com/api';
@@ -328,25 +354,42 @@ export default function VisitSubmitScreen({ route, navigation }) {
           {photo ? (
             <View style={styles.photoContainer}>
               <Image source={{ uri: photo }} style={styles.photoPreview} />
-              <TouchableOpacity 
-                style={styles.retakeBtn} 
-                onPress={() => setShowCamera(true)}
-                disabled={submitting}
-              >
-                <Text style={styles.retakeText}>Retake Photo</Text>
-              </TouchableOpacity>
+              <View style={styles.retakeBtnRow}>
+                <TouchableOpacity 
+                  style={styles.retakeBtnItem} 
+                  onPress={() => setShowCamera(true)}
+                  disabled={submitting}
+                >
+                  <Text style={styles.retakeText}>📷 Retake</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.retakeBtnItem, { borderLeftWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }]} 
+                  onPress={handlePickImage}
+                  disabled={submitting}
+                >
+                  <Text style={styles.retakeText}>🖼️ Gallery</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : (
-            <TouchableOpacity 
-              style={styles.cameraPlaceholder} 
-              onPress={() => setShowCamera(true)}
-              disabled={submitting || !isWithinGeofence}
-            >
-              <Text style={[styles.cameraPlaceholderText, !isWithinGeofence ? { color: COLORS.textMuted } : null]}>
-                📷 Capture Client Site Photo
-              </Text>
-              <Text style={styles.cameraSubtext}>Direct camera capture required (No gallery uploads)</Text>
-            </TouchableOpacity>
+            <View style={styles.uploadOptionsRow}>
+              <TouchableOpacity 
+                style={[styles.uploadOptionBtn, !isWithinGeofence ? { opacity: 0.5 } : null]} 
+                onPress={() => setShowCamera(true)}
+                disabled={submitting || !isWithinGeofence}
+              >
+                <Text style={styles.uploadOptionIcon}>📷</Text>
+                <Text style={[styles.uploadOptionText, !isWithinGeofence ? { color: COLORS.textMuted } : null]}>Capture Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.uploadOptionBtn, !isWithinGeofence ? { opacity: 0.5 } : null]} 
+                onPress={handlePickImage}
+                disabled={submitting || !isWithinGeofence}
+              >
+                <Text style={styles.uploadOptionIcon}>🖼️</Text>
+                <Text style={[styles.uploadOptionText, !isWithinGeofence ? { color: COLORS.textMuted } : null]}>Upload Gallery</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           <View style={[globalStyles.inputGroup, { marginTop: 16 }]}>
@@ -648,5 +691,47 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  uploadOptionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 8,
+  },
+  uploadOptionBtn: {
+    flex: 1,
+    height: 120,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+    backgroundColor: COLORS.bg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 12,
+  },
+  uploadOptionIcon: {
+    fontSize: 28,
+    marginBottom: 8,
+  },
+  uploadOptionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.primary,
+    textAlign: 'center',
+  },
+  retakeBtnRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  retakeBtnItem: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
