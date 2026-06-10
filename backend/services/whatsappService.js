@@ -1,14 +1,38 @@
 const mongoose = require('mongoose');
 
 /**
+ * Automatically formats a phone number to E.164 standard (e.g. +91XXXXXXXXXX)
+ * @param {string} phone - The input phone number
+ * @returns {string} - The sanitized phone number
+ */
+const formatPhoneNumber = (phone) => {
+  if (!phone) return '';
+  let cleaned = phone.trim().replace(/[-\s()]/g, ''); // Remove spaces, dashes, brackets
+
+  if (!cleaned.startsWith('+')) {
+    // If it's a standard 10-digit number, assume India (+91) as default for Indian testing
+    if (cleaned.length === 10) {
+      cleaned = '+91' + cleaned;
+    } else if (cleaned.length === 12 && cleaned.startsWith('91')) {
+      cleaned = '+' + cleaned;
+    } else {
+      cleaned = '+' + cleaned; // General fallback
+    }
+  }
+  return cleaned;
+};
+
+/**
  * Sends a WhatsApp notification to a client (using Twilio in production or simulating locally)
  * @param {string} to - The recipient's phone number
  * @param {string} message - The message body to send
  */
 const sendWhatsAppMessage = async (to, message) => {
+  const formattedTo = formatPhoneNumber(to);
+
   console.log(`\n==================================================`);
   console.log(`[WHATSAPP SERVICE] Dispatching Notification...`);
-  console.log(`Recipient: ${to}`);
+  console.log(`Recipient: ${formattedTo} (Original: ${to})`);
   console.log(`Message: "${message}"`);
   console.log(`==================================================\n`);
 
@@ -16,7 +40,7 @@ const sendWhatsAppMessage = async (to, message) => {
   try {
     if (mongoose.connection.readyState === 1) {
       await mongoose.connection.db.collection('whatsapp_logs').insertOne({
-        to,
+        to: formattedTo,
         message,
         status: 'sent',
         timestamp: new Date()
@@ -37,8 +61,8 @@ const sendWhatsAppMessage = async (to, message) => {
       const client = twilio(accountSid, authToken);
       
       const response = await client.messages.create({
-        from: 'whatsapp:' + whatsappNumber, // e.g. +14155238886 (Twilio Sandbox or Approved Sender)
-        to: 'whatsapp:' + to,
+        from: 'whatsapp:' + formatPhoneNumber(whatsappNumber),
+        to: 'whatsapp:' + formattedTo,
         body: message
       });
       console.log('[TWILIO SUCCESS] Message SID:', response.sid);
