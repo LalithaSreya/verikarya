@@ -169,7 +169,7 @@ export const Login = () => {
               marginTop: 'var(--spacing-md)'
             }}
           >
-            🚀 Return to Mobile App
+            Return to Mobile App
           </a>
 
           <p className="text-muted" style={{ fontSize: '0.75rem', marginTop: 'var(--spacing-lg)' }}>
@@ -200,7 +200,7 @@ export const Login = () => {
             onClick={() => setRole('employee')}
             disabled={submitting}
           >
-            🧑‍💼 Employee Login
+            Employee Login
           </button>
           <button
             type="button"
@@ -209,13 +209,14 @@ export const Login = () => {
             onClick={() => setRole('manager')}
             disabled={submitting}
           >
-            💼 Manager Login
+            Manager Login
           </button>
         </div>
 
         {error && (
           <div className="alert alert-danger" style={{ marginBottom: 'var(--spacing-md)' }}>
-            ⚠️ {error}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            {error}
           </div>
         )}
 
@@ -312,7 +313,7 @@ export const Login = () => {
             onClick={handleMockGoogleSignIn}
             disabled={submitting}
           >
-            <span>🔧</span> Dev/Testing: Mock Google Sign-In
+            Dev/Testing: Mock Google Sign-In
           </button>
         </div>
 

@@ -15,9 +15,64 @@ export const api = axios.create({
   },
 });
 
+const LIGHT_COLORS = {
+  primary: '#2563EB',
+  primaryLight: '#EFF6FF',
+  secondary: '#14B8A6',
+  bg: '#F8FAFC',
+  card: '#FFFFFF',
+  textMain: '#0F172A',
+  textMuted: '#64748B',
+  border: '#E2E8F0',
+  danger: '#EF4444',
+  success: '#10B981',
+  warning: '#F59E0B',
+};
+
+const DARK_COLORS = {
+  primary: '#3B82F6',
+  primaryLight: 'rgba(59, 130, 246, 0.15)',
+  secondary: '#14B8A6',
+  bg: '#0F172A',
+  card: '#1E293B',
+  textMain: '#F8FAFC',
+  textMuted: '#94A3B8',
+  border: '#334155',
+  danger: '#EF4444',
+  success: '#10B981',
+  warning: '#F59E0B',
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState('light');
+
+  useEffect(() => {
+    const loadTheme = async () => {
+      try {
+        const storedTheme = await AsyncStorage.getItem('verikarya_theme');
+        if (storedTheme) {
+          setTheme(storedTheme);
+        }
+      } catch (err) {
+        console.error('Failed to load theme:', err);
+      }
+    };
+    loadTheme();
+  }, []);
+
+  const toggleTheme = async () => {
+    try {
+      const nextTheme = theme === 'light' ? 'dark' : 'light';
+      setTheme(nextTheme);
+      await AsyncStorage.setItem('verikarya_theme', nextTheme);
+    } catch (err) {
+      console.error('Failed to save theme:', err);
+    }
+  };
+
+  const colors = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
 
   const getQueryParams = (url) => {
     let queryParams = {};
@@ -173,6 +228,9 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!user,
         isManager: user?.role === 'manager',
         isEmployee: user?.role === 'employee',
+        theme,
+        toggleTheme,
+        colors
       }}
     >
       {children}

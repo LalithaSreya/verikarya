@@ -62,8 +62,14 @@ export const ManagerDashboard = () => {
           <p className="text-muted">Real-time workforce verification, audit trails, and performance monitoring.</p>
         </div>
         <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-          <Link to="/tasks" className="btn btn-primary">➕ Create Task</Link>
-          <Link to="/visits" className="btn btn-secondary">➕ Schedule Visit</Link>
+          <Link to="/tasks" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Create Task
+          </Link>
+          <Link to="/visits" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Schedule Visit
+          </Link>
         </div>
       </div>
 
@@ -73,7 +79,10 @@ export const ManagerDashboard = () => {
         {/* Metric 1 */}
         <div className="card metric-card">
           <div>
-            <div className="card-title">👥 Staff Directory</div>
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary-color)' }}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              Staff Directory
+            </div>
             <div className="card-subtitle">Active workforce count</div>
           </div>
           <div>
@@ -87,7 +96,10 @@ export const ManagerDashboard = () => {
         {/* Metric 2 */}
         <div className="card metric-card">
           <div>
-            <div className="card-title">🕒 Present Today</div>
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--secondary-color)' }}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              Present Today
+            </div>
             <div className="card-subtitle">Attendance rate</div>
           </div>
           <div>
@@ -127,7 +139,10 @@ export const ManagerDashboard = () => {
         {/* Metric 3 */}
         <div className="card metric-card">
           <div>
-            <div className="card-title">📋 Task Progression</div>
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary-color)' }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              Task Progression
+            </div>
             <div className="card-subtitle">Completion rate</div>
           </div>
           <div>
@@ -171,13 +186,16 @@ export const ManagerDashboard = () => {
         {/* Left column: Submissions Pending Review */}
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)' }}>
-            <h3 style={{ margin: 0 }}>🔍 Pending Evidence Verification ({pendingReviews.length})</h3>
+            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary-color)' }}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              Pending Evidence Verification ({pendingReviews.length})
+            </h3>
             <Link to="/reviews" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Review Center →</Link>
           </div>
 
           {pendingReviews.length === 0 ? (
             <p className="text-muted" style={{ textAlign: 'center', padding: 'var(--spacing-xl)' }}>
-              ✅ No pending submissions! All employee work has been reviewed.
+              No pending submissions! All employee work has been reviewed.
             </p>
           ) : (
             <div className="table-container">
@@ -228,7 +246,10 @@ export const ManagerDashboard = () => {
           
           {/* Audit Trail Card */}
           <div className="card">
-            <h3>📈 Audit Trail Summary</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary-color)' }}><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              Audit Trail Summary
+            </h3>
             <p className="card-subtitle">Evidence review breakdown</p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
@@ -258,7 +279,10 @@ export const ManagerDashboard = () => {
 
           {/* Quick Operations Guide */}
           <div className="card" style={{ backgroundColor: 'var(--primary-light)', borderColor: '#BFDBFE' }}>
-            <h4 style={{ color: 'var(--primary-color)', marginBottom: 'var(--spacing-xs)' }}>📋 Manager Playbook</h4>
+            <h4 style={{ color: 'var(--primary-color)', marginBottom: 'var(--spacing-xs)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary-color)' }}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+              Manager Playbook
+            </h4>
             <ul style={{ paddingLeft: 'var(--spacing-md)', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }} className="text-muted">
               <li>Create <b>Tasks</b> to track inside-premise office activities.</li>
               <li>Schedule <b>Field Visits</b> with client coordinates to track external client deployments.</li>

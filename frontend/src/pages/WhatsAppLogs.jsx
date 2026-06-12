@@ -47,7 +47,7 @@ export const WhatsAppLogs = () => {
   return (
     <DashboardLayout>
       <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <h2>💬 Simulated WhatsApp Gateway Console</h2>
+        <h2>Simulated WhatsApp Gateway Console</h2>
         <p className="text-muted">Review automated customer completion notifications and verify simulated outgoing traffic.</p>
       </div>
 
@@ -59,7 +59,10 @@ export const WhatsAppLogs = () => {
         {/* Metric 1: Total Messages */}
         <div className="card metric-card" style={{ background: 'linear-gradient(135deg, #EFF6FF 0%, #FFFFFF 100%)' }}>
           <div>
-            <div className="card-title" style={{ color: 'var(--primary-color)' }}>✉️ Total Dispatches</div>
+            <div className="card-title" style={{ color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              Total Dispatches
+            </div>
             <div className="card-subtitle">All simulated notifications</div>
           </div>
           <div>
@@ -73,7 +76,10 @@ export const WhatsAppLogs = () => {
         {/* Metric 2: Unique Customers */}
         <div className="card metric-card" style={{ background: 'linear-gradient(135deg, #F0FDFA 0%, #FFFFFF 100%)' }}>
           <div>
-            <div className="card-title" style={{ color: 'var(--secondary-color)' }}>👥 Target Clients</div>
+            <div className="card-title" style={{ color: 'var(--secondary-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              Target Clients
+            </div>
             <div className="card-subtitle">Unique customer endpoints</div>
           </div>
           <div>
@@ -87,7 +93,10 @@ export const WhatsAppLogs = () => {
         {/* Metric 3: Gateway Status */}
         <div className="card metric-card" style={{ background: 'linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%)' }}>
           <div>
-            <div className="card-title" style={{ color: 'var(--success-color)' }}>⚡ Gateway Status</div>
+            <div className="card-title" style={{ color: 'var(--success-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline></svg>
+              Gateway Status
+            </div>
             <div className="card-subtitle">Integration simulation service</div>
           </div>
           <div>
@@ -117,8 +126,8 @@ export const WhatsAppLogs = () => {
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ margin: 0 }}>Outbox Queue</h3>
-            <button className="btn btn-outline btn-sm" onClick={fetchLogs} style={{ padding: '4px 8px', fontSize: '0.8rem' }}>
-              🔄 Refresh List
+            <button className="btn btn-outline btn-sm" onClick={fetchLogs} style={{ padding: '4px 8px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center' }}>
+              Refresh List
             </button>
           </div>
 
@@ -286,7 +295,10 @@ export const WhatsAppLogs = () => {
                 alignItems: 'center', 
                 gap: '12px' 
               }}>
-                <div style={{ fontSize: '1.25rem', color: '#707070' }}>☺ 📎</div>
+                <div style={{ fontSize: '1.25rem', color: '#707070', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                </div>
                 <div style={{ 
                   flex: 1, 
                   backgroundColor: 'white', 
@@ -309,7 +321,7 @@ export const WhatsAppLogs = () => {
                   justifyContent: 'center',
                   fontWeight: 700
                 }}>
-                  🎤
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
                 </div>
               </div>
 
@@ -317,7 +329,9 @@ export const WhatsAppLogs = () => {
           ) : (
             <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '450px', textAlign: 'center' }}>
               <div className="text-muted">
-                <span style={{ fontSize: '3rem' }}>💬</span>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--spacing-md)', color: 'var(--text-muted)' }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                </div>
                 <h3>Select a log message</h3>
                 <p>Click on any sent message inside the queue to preview its simulated delivery view.</p>
               </div>

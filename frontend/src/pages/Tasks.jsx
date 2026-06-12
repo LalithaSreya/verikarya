@@ -222,7 +222,7 @@ export const Tasks = () => {
   return (
     <DashboardLayout>
       <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <h2>📋 Task Workspace</h2>
+        <h2>Task Workspace</h2>
         <p className="text-muted">
           {isManager 
             ? 'Assign workforce operations and monitor completion verifications.' 
@@ -280,7 +280,7 @@ export const Tasks = () => {
                     {/* Progress History timeline logs */}
                     {task.progressHistory && task.progressHistory.length > 0 && (
                       <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-sm)', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--border-radius-sm)', fontSize: '0.85rem' }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>⏳ Saved Progress Logs ({task.progressHistory.length})</div>
+                        <div style={{ fontWeight: 'bold', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>Saved Progress Logs ({task.progressHistory.length})</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {task.progressHistory.map((progress, idx) => (
                             <div key={idx} style={{ 
@@ -362,12 +362,12 @@ export const Tasks = () => {
                       <div style={{ marginTop: 'var(--spacing-md)', display: 'flex', justifyContent: 'flex-end' }}>
                         {task.status === 'pending' && (
                           <button className="btn btn-primary btn-sm" onClick={() => handleStartTask(task._id)}>
-                            🚀 Start Task
+                            Start Task
                           </button>
                         )}
                         {task.status === 'in_progress' && (
                           <button className="btn btn-secondary btn-sm" onClick={() => openVerificationModal(task)}>
-                            🔒 Submit Evidence & Complete
+                            Submit Evidence & Complete
                           </button>
                         )}
                         {task.status === 'completed' && (
@@ -393,7 +393,7 @@ export const Tasks = () => {
         <div>
           {isManager ? (
             <div className="card">
-              <h3 style={{ marginBottom: 'var(--spacing-md)' }}>➕ Create & Assign Task</h3>
+              <h3 style={{ marginBottom: 'var(--spacing-md)' }}>Create & Assign Task</h3>
               
               {formError && <div className="alert alert-danger">{formError}</div>}
               {formSuccess && <div className="alert alert-success">{formSuccess}</div>}
@@ -500,7 +500,7 @@ export const Tasks = () => {
             </div>
           ) : (
             <div className="card" style={{ backgroundColor: 'var(--bg-color)' }}>
-              <h3>🔐 Verification Walkthrough</h3>
+              <h3>Verification Walkthrough</h3>
               <p className="text-muted" style={{ fontSize: '0.9rem', marginTop: 'var(--spacing-xs)' }}>
                 VeriKarya operates under strict cryptographic and visual audit trail rules:
               </p>

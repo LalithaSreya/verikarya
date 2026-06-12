@@ -48,6 +48,21 @@
   --transition-normal: 0.25s ease;
 }
 
+/* Dark mode theme tokens */
+[data-theme='dark'] {
+  --bg-color: #0F172A; /* Slate 900 */
+  --text-main: #F8FAFC; /* Slate 50 */
+  --text-muted: #94A3B8; /* Slate 400 */
+  --card-bg: #1E293B; /* Slate 800 */
+  --border-color: #334155; /* Slate 700 */
+  --primary-light: rgba(37, 99, 235, 0.15);
+  --secondary-light: rgba(20, 184, 166, 0.15);
+  --success-light: rgba(16, 185, 129, 0.15);
+  --warning-light: rgba(245, 158, 11, 0.15);
+  --danger-light: rgba(239, 68, 68, 0.15);
+  --info-light: rgba(59, 130, 246, 0.15);
+}
+
 /* Reset and Base Styles */
 * {
   box-sizing: border-box;

@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Modal } from 'react-native';
-import { api } from '../context/AuthContext';
-import { COLORS, globalStyles } from '../styles/globalStyles';
+import { AuthContext, api } from '../context/AuthContext';
+import { globalStyles } from '../styles/globalStyles';
 import CameraCapture from '../components/CameraCapture';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TaskSubmitScreen({ route, navigation }) {
+  const { colors, theme } = useContext(AuthContext);
+  const COLORS = colors;
+  const styles = getStyles(colors);
   const { taskId } = route.params;
   const [task, setTask] = useState(null);
   const [notes, setNotes] = useState('');
@@ -163,7 +167,10 @@ export default function TaskSubmitScreen({ route, navigation }) {
       {/* Back button and title */}
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.backBtn} onPress={navigation.goBack}>
-          <Text style={styles.backText}>← Back</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="arrow-back" size={16} color={COLORS.textMain} style={{ marginRight: 4 }} />
+            <Text style={styles.backText}>Back</Text>
+          </View>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Task Verification Workspace</Text>
       </View>
@@ -192,9 +199,12 @@ export default function TaskSubmitScreen({ route, navigation }) {
       {/* Verification Code Box (Conditional) */}
       {task.requireCode !== false && (
         <View style={globalStyles.card}>
-          <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 8 }]}>
-            🔐 Verification Code
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <Ionicons name="lock-closed-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+            <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 0 }]}>
+              Verification Code
+            </Text>
+          </View>
           {codeLoading ? (
             <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 12 }} />
           ) : (
@@ -208,9 +218,12 @@ export default function TaskSubmitScreen({ route, navigation }) {
 
       {/* Submission Form */}
       <View style={globalStyles.card}>
-        <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 12 }]}>
-          📸 Work Evidence Input
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          <Ionicons name="camera-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+          <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 0 }]}>
+            Work Evidence Input
+          </Text>
+        </View>
 
         {/* Photo preview/placeholder */}
         {photo ? (
@@ -222,14 +235,20 @@ export default function TaskSubmitScreen({ route, navigation }) {
                 onPress={() => setShowCamera(true)}
                 disabled={submitting}
               >
-                <Text style={styles.retakeText}>📷 Retake</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="camera" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.retakeText}>Retake</Text>
+                </View>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.retakeBtnItem, { borderLeftWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }]} 
                 onPress={handlePickImage}
                 disabled={submitting}
               >
-                <Text style={styles.retakeText}>🖼️ Gallery</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="image-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.retakeText}>Gallery</Text>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -240,7 +259,7 @@ export default function TaskSubmitScreen({ route, navigation }) {
               onPress={() => setShowCamera(true)}
               disabled={submitting}
             >
-              <Text style={styles.uploadOptionIcon}>📷</Text>
+              <Ionicons name="camera-outline" size={28} color={COLORS.primary} style={{ marginBottom: 8 }} />
               <Text style={styles.uploadOptionText}>Capture Camera</Text>
             </TouchableOpacity>
             <TouchableOpacity 
@@ -248,7 +267,7 @@ export default function TaskSubmitScreen({ route, navigation }) {
               onPress={handlePickImage}
               disabled={submitting}
             >
-              <Text style={styles.uploadOptionIcon}>🖼️</Text>
+              <Ionicons name="image-outline" size={28} color={COLORS.primary} style={{ marginBottom: 8 }} />
               <Text style={styles.uploadOptionText}>Upload Gallery</Text>
             </TouchableOpacity>
           </View>
@@ -295,9 +314,12 @@ export default function TaskSubmitScreen({ route, navigation }) {
       {/* Previous Submissions History List */}
       {task.progressHistory && task.progressHistory.length > 0 && (
         <View style={globalStyles.card}>
-          <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 12 }]}>
-            ⏳ Previous Days' Submissions ({task.progressHistory.length})
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <Ionicons name="time-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+            <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 0 }]}>
+              Previous Days' Submissions ({task.progressHistory.length})
+            </Text>
+          </View>
           <View style={styles.timeline}>
             {task.progressHistory.map((progress, idx) => (
               <View key={idx} style={styles.timelineItem}>
@@ -338,7 +360,7 @@ export default function TaskSubmitScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (COLORS) => StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',

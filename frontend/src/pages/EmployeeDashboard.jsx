@@ -466,11 +466,13 @@ export const EmployeeDashboard = () => {
                   <div>
                     {gpsCheckPassed ? (
                       <div className="alert alert-success">
-                        ✅ <b>Geofence Matched!</b> You are inside the office range. Distance: <b>{gpsDistance} meters</b>.
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', flexShrink: 0 }}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <b>Geofence Matched!</b> You are inside the office range. Distance: <b>{gpsDistance} meters</b>.
                       </div>
                     ) : (
                       <div className="alert alert-danger">
-                        ❌ <b>Geofence Check Failed.</b> You are currently <b>{gpsDistance ? `${gpsDistance}m` : 'unknown'}</b> away. You must be within 100 meters of your assigned office coordinate.
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', flexShrink: 0 }}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <b>Geofence Check Failed.</b> You are currently <b>{gpsDistance ? `${gpsDistance}m` : 'unknown'}</b> away. You must be within 100 meters of your assigned office coordinate.
                       </div>
                     )}
 
@@ -478,7 +480,8 @@ export const EmployeeDashboard = () => {
                     
                     <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end', marginTop: 'var(--spacing-lg)' }}>
                       <button className="btn btn-outline" type="button" onClick={() => performGpsCheck(punchType)} disabled={gpsLoading}>
-                        🔄 Refresh GPS Lock
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+                        Refresh GPS Lock
                       </button>
                       <button 
                         className="btn btn-primary" 
@@ -497,9 +500,10 @@ export const EmployeeDashboard = () => {
                           className="btn btn-outline btn-sm"
                           onClick={handleSetCurrentAsOffice}
                           disabled={gpsLoading || modalLoading}
-                          style={{ borderColor: 'var(--secondary-color)', color: 'var(--secondary-color)', fontSize: '0.85rem' }}
+                          style={{ borderColor: 'var(--secondary-color)', color: 'var(--secondary-color)', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          🔧 Testing Bypass: Set Current GPS as Office
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                          Testing Bypass: Set Current GPS as Office
                         </button>
                       </div>
                     )}

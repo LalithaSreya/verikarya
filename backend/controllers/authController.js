@@ -237,13 +237,183 @@ const googleLogin = async (req, res) => {
   }
 };
 
+// @desc    Bulk register employees
+// @route   POST /api/auth/employees/bulk
+// @access  Private (Manager only)
+const bulkRegisterEmployees = async (req, res) => {
+  try {
+    const { employees } = req.body;
+
+    if (!employees || !Array.isArray(employees) || employees.length === 0) {
+      return res.status(400).json({ success: false, error: 'Please provide an array of employees' });
+    }
+
+    const results = {
+      registered: [],
+      skipped: [],
+      errors: []
+    };
+
+    for (const emp of employees) {
+      const { name, email, password, phone } = emp;
+
+      if (!name || !email || !password) {
+        results.errors.push({ email: email || 'unknown', error: 'Missing name, email, or password' });
+        continue;
+      }
+
+      try {
+        const userExists = await User.findOne({ email: email.toLowerCase() });
+        if (userExists) {
+          results.skipped.push({ email, reason: 'Email already exists' });
+          continue;
+        }
+
+        const newUser = await User.create({
+          name,
+          email: email.toLowerCase(),
+          password,
+          phone: phone || '',
+          role: 'employee'
+        });
+
+        results.registered.push({
+          id: newUser._id,
+          name: newUser.name,
+          email: newUser.email,
+          phone: newUser.phone
+        });
+      } catch (err) {
+        results.errors.push({ email, error: err.message });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: results
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// @desc    Update employee profile
+// @route   PUT /api/auth/employees/:id
+// @access  Private (Manager only)
+const updateEmployee = async (req, res) => {
+  try {
+    const { name, email, phone, officeLocation } = req.body;
+
+    let user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Employee not found' });
+    }
+
+    if (user.role !== 'employee') {
+      return res.status(400).json({ success: false, error: 'Can only update employee profiles' });
+    }
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (officeLocation) {
+      updateData.officeLocation = officeLocation;
+    }
+
+    if (email && email.toLowerCase() !== user.email.toLowerCase()) {
+      // Check if email already exists
+      const emailExists = await User.findOne({ email: email.toLowerCase() });
+      if (emailExists && emailExists._id.toString() !== user._id.toString()) {
+        return res.status(400).json({ success: false, error: 'Email already in use' });
+      }
+      updateData.email = email.toLowerCase();
+    }
+
+    user = await User.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        officeLocation: user.officeLocation
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// @desc    Delete employee profile
+// @route   DELETE /api/auth/employees/:id
+// @access  Private (Manager only)
+const deleteEmployee = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Employee not found' });
+    }
+
+    if (user.role !== 'employee') {
+      return res.status(400).json({ success: false, error: 'Can only delete employee profiles' });
+    }
+
+    await user.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Employee deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// @desc    Bulk delete employee profiles
+// @route   DELETE /api/auth/employees
+// @access  Private (Manager only)
+const bulkDeleteEmployees = async (req, res) => {
+  try {
+    const { employeeIds } = req.body;
+    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'Please provide an array of employee IDs to delete' });
+    }
+
+    // Verify they exist and are all employees
+    const users = await User.find({ _id: { $in: employeeIds } });
+    const nonEmployees = users.filter(u => u.role !== 'employee');
+    if (nonEmployees.length > 0) {
+      return res.status(400).json({ success: false, error: 'Can only delete employee profiles' });
+    }
+
+    await User.deleteMany({ _id: { $in: employeeIds } });
+
+    res.status(200).json({
+      success: true,
+      message: `${employeeIds.length} employees deleted successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
   googleLogin,
   getMe,
   getEmployees,
-  updateOfficeLocation
+  updateOfficeLocation,
+  bulkRegisterEmployees,
+  updateEmployee,
+  deleteEmployee,
+  bulkDeleteEmployees
 };
 
 

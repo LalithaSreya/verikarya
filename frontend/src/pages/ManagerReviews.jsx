@@ -102,7 +102,7 @@ export const ManagerReviews = () => {
   return (
     <DashboardLayout>
       <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <h2>🔍 Workforce Evidence Verification</h2>
+        <h2>Workforce Evidence Verification</h2>
         <p className="text-muted">Perform visual and cryptographic audits on employee work submissions.</p>
       </div>
 
@@ -112,19 +112,19 @@ export const ManagerReviews = () => {
           className={`btn ${filter === 'pending' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => handleFilterChange('pending')}
         >
-          📥 Pending Audit ({filter === 'pending' ? reviews.length : '?'})
+          Pending Audit ({filter === 'pending' ? reviews.length : '?'})
         </button>
         <button 
           className={`btn ${filter === 'approved' ? 'btn-success' : 'btn-outline'}`}
           onClick={() => handleFilterChange('approved')}
         >
-          ✅ Approved Trails
+          Approved Trails
         </button>
         <button 
           className={`btn ${filter === 'rejected' ? 'btn-danger' : 'btn-outline'}`}
           onClick={() => handleFilterChange('rejected')}
         >
-          ❌ Rejected Submissions
+          Rejected Submissions
         </button>
       </div>
 
@@ -190,7 +190,7 @@ export const ManagerReviews = () => {
           {/* Right Column: Selected Submission Audit Details */}
           {selectedReview && (
             <div className="card">
-              <h3 style={{ marginBottom: 'var(--spacing-md)' }}>🔍 Evidence Audit Panel</h3>
+              <h3 style={{ marginBottom: 'var(--spacing-md)' }}>Evidence Audit Panel</h3>
               
               {/* Image Frame */}
               {selectedReview.details?.evidence?.photoPath ? (
@@ -236,7 +236,7 @@ export const ManagerReviews = () => {
               {selectedReview.details?.progressHistory && selectedReview.details.progressHistory.length > 0 && (
                 <div style={{ marginBottom: 'var(--spacing-md)', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--spacing-md)' }}>
                   <h4 style={{ fontSize: '0.95rem', marginBottom: 'var(--spacing-sm)' }}>
-                    ⏳ Multi-Day Progress Timeline ({selectedReview.details.progressHistory.length})
+                    Multi-Day Progress Timeline ({selectedReview.details.progressHistory.length})
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
                     {selectedReview.details.progressHistory.map((progress, idx) => (
@@ -300,7 +300,7 @@ export const ManagerReviews = () => {
                       onClick={() => handleReviewDecision('rejected')}
                       disabled={actionLoading}
                     >
-                      ❌ Reject Proof
+                      Reject Proof
                     </button>
                     <button 
                       className="btn btn-success" 
@@ -308,7 +308,7 @@ export const ManagerReviews = () => {
                       onClick={() => handleReviewDecision('approved')}
                       disabled={actionLoading}
                     >
-                      ✅ Approve Proof
+                      Approve Proof
                     </button>
                   </div>
                 </div>

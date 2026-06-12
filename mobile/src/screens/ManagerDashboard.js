@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Image, Modal, Platform } from 'react-native';
 import { AuthContext, api } from '../context/AuthContext';
-import { COLORS, globalStyles } from '../styles/globalStyles';
+import { globalStyles } from '../styles/globalStyles';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ManagerDashboard() {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, colors, theme, toggleTheme } = useContext(AuthContext);
+  const COLORS = colors;
+  const styles = getStyles(colors);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -187,9 +190,12 @@ export default function ManagerDashboard() {
       >
         {/* Simple Analytics Card */}
         <View style={[globalStyles.card, { backgroundColor: COLORS.primaryLight, borderColor: 'transparent' }]}>
-          <Text style={[globalStyles.title, { color: COLORS.primary, fontSize: 16 }]}>
-            📊 Quick Metrics
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+            <Ionicons name="stats-chart" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
+            <Text style={[globalStyles.title, { color: COLORS.primary, fontSize: 16, marginBottom: 0 }]}>
+              Quick Metrics
+            </Text>
+          </View>
           <View style={styles.metricsRow}>
             <View style={styles.metricItem}>
               <Text style={styles.metricVal}>{reviews.length}</Text>
@@ -203,7 +209,10 @@ export default function ManagerDashboard() {
         </View>
 
         {/* Audit Queue */}
-        <Text style={styles.sectionTitle}>📥 Pending Audit Queue ({reviews.length})</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, marginTop: 8 }}>
+          <Ionicons name="download-outline" size={18} color={COLORS.textMain} style={{ marginRight: 6 }} />
+          <Text style={[styles.sectionTitle, { marginBottom: 0, marginTop: 0 }]}>Pending Audit Queue ({reviews.length})</Text>
+        </View>
         {reviews.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyText}>No pending submissions require audit.</Text>
@@ -247,13 +256,19 @@ export default function ManagerDashboard() {
             style={[styles.formToggleBtn, assignType === 'task' ? styles.activeFormToggleBtn : null]}
             onPress={() => setAssignType('task')}
           >
-            <Text style={[styles.formToggleText, assignType === 'task' ? styles.activeFormToggleText : null]}>📋 Assign Task</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="clipboard-outline" size={16} color={assignType === 'task' ? COLORS.primary : COLORS.textMuted} style={{ marginRight: 6 }} />
+              <Text style={[styles.formToggleText, assignType === 'task' ? styles.activeFormToggleText : null]}>Assign Task</Text>
+            </View>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.formToggleBtn, assignType === 'audit' ? styles.activeFormToggleBtn : null]}
             onPress={() => setAssignType('audit')}
           >
-            <Text style={[styles.formToggleText, assignType === 'audit' ? styles.activeFormToggleText : null]}>📍 Assign Audit</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="location-outline" size={16} color={assignType === 'audit' ? COLORS.primary : COLORS.textMuted} style={{ marginRight: 6 }} />
+              <Text style={[styles.formToggleText, assignType === 'audit' ? styles.activeFormToggleText : null]}>Assign Audit</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -264,9 +279,12 @@ export default function ManagerDashboard() {
             style={styles.pickerButton}
             onPress={() => setEmployeeSelectVisible(true)}
           >
-            <Text style={styles.pickerButtonText}>
-              {selectedEmployee ? `🧑‍💼 ${selectedEmployee.name} (${selectedEmployee.email})` : 'Select an Employee...'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="person-outline" size={16} color={COLORS.textMain} style={{ marginRight: 6 }} />
+              <Text style={styles.pickerButtonText}>
+                {selectedEmployee ? `${selectedEmployee.name} (${selectedEmployee.email})` : 'Select an Employee...'}
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -421,7 +439,10 @@ export default function ManagerDashboard() {
         contentContainerStyle={{ padding: 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Text style={styles.sectionTitle}>📅 Employee Attendance Logs ({history.length})</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          <Ionicons name="calendar-outline" size={18} color={COLORS.textMain} style={{ marginRight: 6 }} />
+          <Text style={[styles.sectionTitle, { marginBottom: 0, marginTop: 0 }]}>Employee Attendance Logs ({history.length})</Text>
+        </View>
         {history.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyText}>No attendance records logged.</Text>
@@ -486,9 +507,19 @@ export default function ManagerDashboard() {
           <Text style={styles.welcomeText}>Security Lead Hub</Text>
           <Text style={styles.nameText}>{user?.name}</Text>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity 
+            style={styles.headerBtn} 
+            onPress={toggleTheme}
+            activeOpacity={0.7}
+          >
+            <Ionicons name={theme === 'light' ? 'moon-outline' : 'sunny-outline'} size={18} color={COLORS.textMain} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {renderTabContent()}
@@ -499,7 +530,11 @@ export default function ManagerDashboard() {
           style={styles.tabItem}
           onPress={() => setActiveTab('queue')}
         >
-          <Text style={styles.tabIcon}>📥</Text>
+          <Ionicons 
+            name={activeTab === 'queue' ? 'layers' : 'layers-outline'} 
+            size={22} 
+            color={activeTab === 'queue' ? COLORS.primary : COLORS.textMuted} 
+          />
           <Text style={[styles.tabLabel, activeTab === 'queue' ? styles.activeTabLabel : null]}>Queue</Text>
         </TouchableOpacity>
 
@@ -507,7 +542,11 @@ export default function ManagerDashboard() {
           style={styles.tabItem}
           onPress={() => setActiveTab('assign')}
         >
-          <Text style={styles.tabIcon}>➕</Text>
+          <Ionicons 
+            name={activeTab === 'assign' ? 'add-circle' : 'add-circle-outline'} 
+            size={22} 
+            color={activeTab === 'assign' ? COLORS.primary : COLORS.textMuted} 
+          />
           <Text style={[styles.tabLabel, activeTab === 'assign' ? styles.activeTabLabel : null]}>Assign</Text>
         </TouchableOpacity>
 
@@ -515,8 +554,12 @@ export default function ManagerDashboard() {
           style={styles.tabItem}
           onPress={() => setActiveTab('logs')}
         >
-          <Text style={styles.tabIcon}>📅</Text>
-          <Text style={[styles.tabLabel, activeTab === 'logs' ? styles.activeTabLabel : null]}>Logs</Text>
+          <Ionicons 
+            name={activeTab === 'logs' ? 'calendar' : 'calendar-outline'} 
+            size={22} 
+            color={activeTab === 'logs' ? COLORS.primary : COLORS.textMuted} 
+          />
+          <Text style={[styles.tabLabel, activeTab === 'logs' ? styles.activeTabLabel : null]}>Attendance</Text>
         </TouchableOpacity>
       </View>
 
@@ -527,7 +570,10 @@ export default function ManagerDashboard() {
             
             {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🔍 Evidence Review</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                <Ionicons name="search-outline" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
+                <Text style={[styles.modalTitle, { marginBottom: 0 }]}>Evidence Review</Text>
+              </View>
               <TouchableOpacity onPress={() => setSelectedReview(null)}>
                 <Text style={styles.closeBtn}>Close</Text>
               </TouchableOpacity>
@@ -564,9 +610,12 @@ export default function ManagerDashboard() {
 
                 {selectedReview.type === 'visit' && (
                   <View style={styles.gpsLogsContainer}>
-                    <Text style={[styles.metaLine, { color: COLORS.success, fontWeight: '700' }]}>
-                      ✓ GPS Geofence: PASSED (Within 100m)
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                      <Ionicons name="checkmark-circle" size={14} color={COLORS.success} style={{ marginRight: 4 }} />
+                      <Text style={[styles.metaLine, { color: COLORS.success, fontWeight: '700', marginBottom: 0 }]}>
+                        GPS Geofence: PASSED (Within 100m)
+                      </Text>
+                    </View>
                     <Text style={styles.metaLine}>
                       Target distance: {selectedReview.details?.distanceToTarget} meters
                     </Text>
@@ -638,7 +687,10 @@ export default function ManagerDashboard() {
                       setEmployeeSelectVisible(false);
                     }}
                   >
-                    <Text style={styles.selectModalItemText}>🧑‍💼 {emp.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="person-outline" size={14} color={COLORS.textMain} style={{ marginRight: 6 }} />
+                      <Text style={styles.selectModalItemText}>{emp.name}</Text>
+                    </View>
                     <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{emp.email}</Text>
                   </TouchableOpacity>
                 ))
@@ -658,7 +710,7 @@ export default function ManagerDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (COLORS) => StyleSheet.create({
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -690,8 +742,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 8,
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerBtn: {
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logoutText: {
     fontSize: 12,

@@ -33,6 +33,9 @@ app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
 app.use('/api/visits', require('./routes/visitRoutes'));
 app.use('/api/reviews', require('./routes/reviewRoutes'));
+app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
+app.use('/api/feedback', require('./routes/feedbackRoutes'));
+app.use('/api/analytics', require('./routes/analyticsRoutes'));
 
 // Root endpoint for health check and diagnostics
 app.get('/', (req, res) => {

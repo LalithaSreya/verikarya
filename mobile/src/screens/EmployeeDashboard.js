@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, Platform } from 'react-native';
 import { AuthContext, api } from '../context/AuthContext';
-import { COLORS, globalStyles } from '../styles/globalStyles';
 import CameraCapture from '../components/CameraCapture';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function EmployeeDashboard({ navigation }) {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, colors, theme, toggleTheme } = useContext(AuthContext);
   const [tasks, setTasks] = useState([]);
   const [visits, setVisits] = useState([]);
   const [attendance, setAttendance] = useState(null); // today's attendance record
@@ -20,6 +20,8 @@ export default function EmployeeDashboard({ navigation }) {
   const [punchLoading, setPunchLoading] = useState(false);
   const [punchMessage, setPunchMessage] = useState('');
   const [bypassLoading, setBypassLoading] = useState(false);
+
+  const styles = getStyles(colors);
 
   const loadDashboardData = async () => {
     try {
@@ -147,7 +149,7 @@ export default function EmployeeDashboard({ navigation }) {
   if (loading && !refreshing) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={[styles.loadingText, { marginTop: 12 }]}>Loading your dashboard...</Text>
       </View>
     );
@@ -166,11 +168,15 @@ export default function EmployeeDashboard({ navigation }) {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           >
             {/* Attendance card */}
-            <View style={globalStyles.card}>
-              <Text style={[globalStyles.title, { fontSize: 16 }]}>🕒 Shift Tracker</Text>
+            <View style={styles.card}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Ionicons name="time" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+                <Text style={styles.cardHeaderTitle}>Shift Tracker</Text>
+              </View>
               
               {isShiftDone ? (
                 <View style={styles.shiftDoneContainer}>
+                  <Ionicons name="checkmark-circle" size={48} color={colors.success} style={{ marginBottom: 8 }} />
                   <Text style={styles.shiftDoneText}>Shift Completed Today</Text>
                   <Text style={styles.shiftTimeDetails}>
                     In: {formatTime(attendance.checkIn)} | Out: {formatTime(attendance.checkOut)}
@@ -182,11 +188,13 @@ export default function EmployeeDashboard({ navigation }) {
                   <Text style={styles.shiftTimeDetails}>Clocked in at: {formatTime(attendance.checkIn)}</Text>
                   
                   <TouchableOpacity 
-                    style={[globalStyles.btn, { backgroundColor: COLORS.danger, marginTop: 16 }]}
+                    style={[styles.btn, { backgroundColor: colors.danger, marginTop: 16 }]}
                     onPress={() => handlePunchPress('out')}
                     disabled={punchLoading}
+                    activeOpacity={0.8}
                   >
-                    <Text style={globalStyles.btnText}>Clock-Out</Text>
+                    <Ionicons name="log-out-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.btnText}>Clock-Out</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -195,27 +203,33 @@ export default function EmployeeDashboard({ navigation }) {
                   <Text style={styles.shiftTimeDetails}>You are currently clocked out.</Text>
                   
                   <TouchableOpacity 
-                    style={[globalStyles.btn, { backgroundColor: COLORS.success, marginTop: 16 }]}
+                    style={[styles.btn, { backgroundColor: colors.success, marginTop: 16 }]}
                     onPress={() => handlePunchPress('in')}
                     disabled={punchLoading}
+                    activeOpacity={0.8}
                   >
-                    <Text style={globalStyles.btnText}>Clock-In</Text>
+                    <Ionicons name="log-in-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.btnText}>Clock-In</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
               {/* Testing Bypass Option */}
               {!isShiftDone && (
-                <View style={{ marginTop: 16, borderTopWidth: 1, borderColor: COLORS.border, paddingTop: 16 }}>
+                <View style={{ marginTop: 16, borderTopWidth: 1, borderColor: colors.border, paddingTop: 16 }}>
                   <TouchableOpacity 
-                    style={[globalStyles.btn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.primary }]} 
+                    style={[styles.btn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary }]} 
                     onPress={handleBypassOfficeLocation}
                     disabled={bypassLoading}
+                    activeOpacity={0.7}
                   >
                     {bypassLoading ? (
-                      <ActivityIndicator color={COLORS.primary} size="small" />
+                      <ActivityIndicator color={colors.primary} size="small" />
                     ) : (
-                      <Text style={[globalStyles.btnText, { color: COLORS.primary }]}>🔧 Testing Bypass: Set Current GPS as Office</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="build-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+                        <Text style={[styles.btnText, { color: colors.primary }]}>Testing Bypass: Set Current GPS as Office</Text>
+                      </View>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -223,8 +237,11 @@ export default function EmployeeDashboard({ navigation }) {
             </View>
 
             {/* Dashboard Summary card */}
-            <View style={[globalStyles.card, { marginTop: 16 }]}>
-              <Text style={styles.infoTitle}>📊 Daily Operations Overview</Text>
+            <View style={[styles.card, { marginTop: 16 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Ionicons name="pie-chart" size={20} color={colors.secondary} style={{ marginRight: 8 }} />
+                <Text style={styles.infoTitle}>Daily Operations Overview</Text>
+              </View>
               
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Assigned Tasks</Text>
@@ -248,28 +265,37 @@ export default function EmployeeDashboard({ navigation }) {
             contentContainerStyle={{ padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           >
-            <Text style={styles.sectionTitle}>📋 Assigned Desk Tasks ({tasks.length})</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Ionicons name="clipboard" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+              <Text style={styles.sectionTitle}>Assigned Desk Tasks ({tasks.length})</Text>
+            </View>
+            
             {tasks.length === 0 ? (
               <View style={styles.emptyCard}>
+                <Ionicons name="checkmark-circle-outline" size={32} color={colors.textMuted} style={{ marginBottom: 6 }} />
                 <Text style={styles.emptyText}>No pending desk tasks assigned.</Text>
               </View>
             ) : (
               tasks.map(task => (
                 <TouchableOpacity 
                   key={task._id} 
-                  style={globalStyles.card}
+                  style={styles.card}
                   onPress={() => navigation.navigate('TaskSubmit', { taskId: task._id })}
+                  activeOpacity={0.9}
                 >
                   <View style={styles.cardHeader}>
                     <Text style={styles.cardTitle}>{task.title}</Text>
-                    <View style={[globalStyles.badge, { backgroundColor: '#FEF3C7' }]}>
-                      <Text style={[globalStyles.badgeText, { color: COLORS.warning }]}>Task</Text>
+                    <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
+                      <Text style={[styles.badgeText, { color: colors.primary }]}>Task</Text>
                     </View>
                   </View>
                   <Text style={styles.cardDesc} numberOfLines={3}>{task.description}</Text>
-                  <Text style={styles.cardDeadline}>
-                    Due: {new Date(task.deadline).toLocaleDateString()}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                    <Ionicons name="calendar-outline" size={14} color={colors.danger} style={{ marginRight: 4 }} />
+                    <Text style={styles.cardDeadline}>
+                      Due: {new Date(task.deadline).toLocaleDateString()}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))
             )}
@@ -281,28 +307,37 @@ export default function EmployeeDashboard({ navigation }) {
             contentContainerStyle={{ padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           >
-            <Text style={styles.sectionTitle}>📍 On-Site Audits & Solutions Deployments ({visits.length})</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Ionicons name="location" size={20} color={colors.secondary} style={{ marginRight: 8 }} />
+              <Text style={styles.sectionTitle}>On-Site Audits & Solution Deployments ({visits.length})</Text>
+            </View>
+            
             {visits.length === 0 ? (
               <View style={styles.emptyCard}>
+                <Ionicons name="compass-outline" size={32} color={colors.textMuted} style={{ marginBottom: 6 }} />
                 <Text style={styles.emptyText}>No pending field visits assigned.</Text>
               </View>
             ) : (
               visits.map(visit => (
                 <TouchableOpacity 
                   key={visit._id} 
-                  style={globalStyles.card}
+                  style={styles.card}
                   onPress={() => navigation.navigate('VisitSubmit', { visitId: visit._id })}
+                  activeOpacity={0.9}
                 >
                   <View style={styles.cardHeader}>
                     <Text style={styles.cardTitle}>{visit.clientName}</Text>
-                    <View style={[globalStyles.badge, { backgroundColor: COLORS.primaryLight }]}>
-                      <Text style={[globalStyles.badgeText, { color: COLORS.primary }]}>Visit</Text>
+                    <View style={[styles.badge, { backgroundColor: colors.primaryLight }]}>
+                      <Text style={[styles.badgeText, { color: colors.primary }]}>Visit</Text>
                     </View>
                   </View>
                   <Text style={styles.cardDesc} numberOfLines={3}>{visit.purpose}</Text>
-                  <Text style={styles.cardDeadline}>
-                    Due: {new Date(visit.deadline).toLocaleDateString()}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                    <Ionicons name="calendar-outline" size={14} color={colors.danger} style={{ marginRight: 4 }} />
+                    <Text style={styles.cardDeadline}>
+                      Due: {new Date(visit.deadline).toLocaleDateString()}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))
             )}
@@ -314,7 +349,7 @@ export default function EmployeeDashboard({ navigation }) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       
       {/* Header bar */}
       <View style={styles.header}>
@@ -322,9 +357,23 @@ export default function EmployeeDashboard({ navigation }) {
           <Text style={styles.welcomeText}>Hello,</Text>
           <Text style={styles.nameText}>{user?.name}</Text>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity 
+            style={styles.headerBtn} 
+            onPress={toggleTheme}
+            activeOpacity={0.7}
+          >
+            <Ionicons name={theme === 'light' ? 'moon-outline' : 'sunny-outline'} size={18} color={colors.textMain} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.logoutBtn} 
+            onPress={logout}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {renderTabContent()}
@@ -335,7 +384,11 @@ export default function EmployeeDashboard({ navigation }) {
           style={styles.tabItem}
           onPress={() => setActiveTab('attendance')}
         >
-          <Text style={styles.tabIcon}>🕒</Text>
+          <Ionicons 
+            name={activeTab === 'attendance' ? 'time' : 'time-outline'} 
+            size={22} 
+            color={activeTab === 'attendance' ? colors.primary : colors.textMuted} 
+          />
           <Text style={[styles.tabLabel, activeTab === 'attendance' ? styles.activeTabLabel : null]}>Shift</Text>
         </TouchableOpacity>
 
@@ -343,7 +396,11 @@ export default function EmployeeDashboard({ navigation }) {
           style={styles.tabItem}
           onPress={() => setActiveTab('tasks')}
         >
-          <Text style={styles.tabIcon}>📋</Text>
+          <Ionicons 
+            name={activeTab === 'tasks' ? 'clipboard' : 'clipboard-outline'} 
+            size={22} 
+            color={activeTab === 'tasks' ? colors.primary : colors.textMuted} 
+          />
           <Text style={[styles.tabLabel, activeTab === 'tasks' ? styles.activeTabLabel : null]}>Tasks</Text>
         </TouchableOpacity>
 
@@ -351,7 +408,11 @@ export default function EmployeeDashboard({ navigation }) {
           style={styles.tabItem}
           onPress={() => setActiveTab('visits')}
         >
-          <Text style={styles.tabIcon}>📍</Text>
+          <Ionicons 
+            name={activeTab === 'visits' ? 'location' : 'location-outline'} 
+            size={22} 
+            color={activeTab === 'visits' ? colors.primary : colors.textMuted} 
+          />
           <Text style={[styles.tabLabel, activeTab === 'visits' ? styles.activeTabLabel : null]}>Audits</Text>
         </TouchableOpacity>
       </View>
@@ -368,7 +429,7 @@ export default function EmployeeDashboard({ navigation }) {
       <Modal visible={punchLoading} transparent onRequestClose={() => {}}>
         <View style={styles.overlayContainer}>
           <View style={styles.loadingModal}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingModalText}>{punchMessage}</Text>
           </View>
         </View>
@@ -378,49 +439,79 @@ export default function EmployeeDashboard({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
   },
   loadingText: {
     fontSize: 14,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   welcomeText: {
     fontSize: 12,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
   },
   nameText: {
     fontSize: 18,
     fontWeight: '800',
-    color: COLORS.textMain,
+    color: colors.textMain,
+  },
+  headerBtn: {
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logoutBtn: {
-    backgroundColor: COLORS.bg,
+    backgroundColor: colors.bg,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     borderRadius: 8,
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logoutText: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.textMain,
+    color: colors.textMain,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.textMain,
   },
   shiftDoneContainer: {
     alignItems: 'center',
@@ -429,33 +520,44 @@ const styles = StyleSheet.create({
   shiftDoneText: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.success,
+    color: colors.success,
   },
   activeShiftText: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: colors.primary,
   },
   inactiveShiftText: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.textMuted,
+    color: colors.textMuted,
   },
   shiftTimeDetails: {
     fontSize: 13,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
     marginTop: 4,
+  },
+  btn: {
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  btnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: COLORS.textMain,
-    marginBottom: 12,
+    color: colors.textMain,
   },
   emptyCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     borderStyle: 'dashed',
     borderRadius: 12,
     padding: 24,
@@ -464,7 +566,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 13,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -475,20 +577,31 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: COLORS.textMain,
+    color: colors.textMain,
     flex: 1,
     marginRight: 8,
   },
+  badge: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 99,
+    alignSelf: 'flex-start',
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
   cardDesc: {
     fontSize: 13,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
     lineHeight: 18,
     marginBottom: 8,
   },
   cardDeadline: {
     fontSize: 11,
     fontWeight: '600',
-    color: COLORS.danger,
+    color: colors.danger,
   },
   overlayContainer: {
     flex: 1,
@@ -497,7 +610,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingModal: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     padding: 24,
     borderRadius: 12,
     alignItems: 'center',
@@ -506,17 +619,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   loadingModalText: {
     marginTop: 12,
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.textMain,
+    color: colors.textMain,
   },
   tabBar: {
     flexDirection: 'row',
     height: 65,
-    backgroundColor: COLORS.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     marginHorizontal: 16,
     marginBottom: Platform.OS === 'ios' ? 32 : 28,
@@ -528,46 +643,41 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabIcon: {
-    fontSize: 20,
-    marginBottom: 2,
-  },
   tabLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: COLORS.textMuted,
+    color: colors.textMuted,
   },
   activeTabLabel: {
-    color: COLORS.primary,
+    color: colors.primary,
     fontWeight: '800',
   },
   infoTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: COLORS.textMain,
-    marginBottom: 12,
+    color: colors.textMain,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
   },
   infoLabel: {
     fontSize: 13,
-    color: COLORS.textMuted,
+    color: colors.textMuted,
   },
   infoValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.textMain,
+    color: colors.textMain,
   },
 });

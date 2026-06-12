@@ -329,7 +329,7 @@ export const FieldVisits = () => {
   return (
     <DashboardLayout>
       <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <h2>📍 On-Site Audit Tracker</h2>
+        <h2>On-Site Audit Tracker</h2>
         <p className="text-muted">
           {isManager
             ? 'Schedule on-site client audits with target coordinates and monitor security workforce locations.'
@@ -371,15 +371,15 @@ export const FieldVisits = () => {
 
                     <div style={{ margin: 'var(--spacing-md) 0' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }} className="text-muted">
-                        <span>🎯 <b>Coordinates: </b>{visit.targetLocation.lat}, {visit.targetLocation.lng}</span>
-                        <span>📅 <b>Deadline: </b>{new Date(visit.deadline).toLocaleDateString()}</span>
+                        <span><b>Coordinates: </b>{visit.targetLocation.lat}, {visit.targetLocation.lng}</span>
+                        <span><b>Deadline: </b>{new Date(visit.deadline).toLocaleDateString()}</span>
                       </div>
                       
                       {/* Interactive map display when active and started by Employee */}
                       {isEmployee && visit.status === 'started' && (
                         <div style={{ marginTop: 'var(--spacing-sm)' }}>
                           <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-color)', marginBottom: '4px' }}>
-                            🗺️ Target Geofence (Teal Circle = 100m Range)
+                            Target Geofence (Teal Circle = 100m Range)
                           </div>
                           <LeafletMap 
                             targetLoc={visit.targetLocation}
@@ -404,7 +404,7 @@ export const FieldVisits = () => {
                                     {/* Progress History timeline logs */}
                     {visit.progressHistory && visit.progressHistory.length > 0 && (
                       <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-sm)', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--border-radius-sm)', fontSize: '0.85rem' }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>⏳ Saved Progress Logs ({visit.progressHistory.length})</div>
+                        <div style={{ fontWeight: 'bold', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>Saved Progress Logs ({visit.progressHistory.length})</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {visit.progressHistory.map((progress, idx) => (
                             <div key={idx} style={{ 
@@ -640,7 +640,7 @@ export const FieldVisits = () => {
             </div>
           ) : (
             <div className="card" style={{ backgroundColor: 'var(--bg-color)' }}>
-              <h3>🛰️ Geofenced Audit Details</h3>
+              <h3>Geofenced Audit Details</h3>
               <p className="text-muted" style={{ fontSize: '0.9rem', marginTop: 'var(--spacing-xs)' }}>
                 On-site activity verification implements real-time geofence tracking:
               </p>
@@ -700,11 +700,13 @@ export const FieldVisits = () => {
                   <div>
                     {gpsCheckPassed ? (
                       <div className="alert alert-success">
-                        ✅ <b>Geofence Matched!</b> You are currently within range. Distance to client: <b>{gpsDistance} meters</b>.
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', flexShrink: 0 }}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <b>Geofence Matched!</b> You are currently within range. Distance to client: <b>{gpsDistance} meters</b>.
                       </div>
                     ) : (
                       <div className="alert alert-danger">
-                        ❌ <b>Geofence Verification Failed.</b> You are currently <b>{gpsDistance ? `${gpsDistance}m` : 'unknown'}</b> away. You must be within 100 meters to complete.
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', flexShrink: 0 }}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <b>Geofence Verification Failed.</b> You are currently <b>{gpsDistance ? `${gpsDistance}m` : 'unknown'}</b> away. You must be within 100 meters to complete.
                       </div>
                     )}
 
@@ -712,7 +714,8 @@ export const FieldVisits = () => {
                     
                     <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end', marginTop: 'var(--spacing-lg)' }}>
                       <button className="btn btn-outline" onClick={() => performGpsCheck(activeVisit)} disabled={gpsLoading}>
-                        🔄 Refresh GPS Lock
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+                        Refresh GPS Lock
                       </button>
                       <button 
                         className="btn btn-primary" 
@@ -730,9 +733,10 @@ export const FieldVisits = () => {
                           className="btn btn-outline btn-sm"
                           onClick={handleSetCurrentAsTarget}
                           disabled={gpsLoading || modalSubmitting}
-                          style={{ borderColor: 'var(--secondary-color)', color: 'var(--secondary-color)', fontSize: '0.85rem' }}
+                          style={{ borderColor: 'var(--secondary-color)', color: 'var(--secondary-color)', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          🔧 Testing Bypass: Set Current GPS as Target
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                          Testing Bypass: Set Current GPS as Target
                         </button>
                       </div>
                     )}
@@ -785,11 +789,15 @@ export const FieldVisits = () => {
                       borderBottom: proofType === 'gallery' ? '2px solid var(--primary-color)' : 'none',
                       color: proofType === 'gallery' ? 'var(--primary-color)' : 'var(--text-muted)',
                       fontWeight: proofType === 'gallery' ? 600 : 400,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
                     onClick={() => { setProofType('gallery'); setCapturedPhoto(null); }}
                   >
-                    📁 Upload from Gallery
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    Upload from Gallery
                   </button>
                   <button
                     type="button"
@@ -801,11 +809,15 @@ export const FieldVisits = () => {
                       borderBottom: proofType === 'camera' ? '2px solid var(--primary-color)' : 'none',
                       color: proofType === 'camera' ? 'var(--primary-color)' : 'var(--text-muted)',
                       fontWeight: proofType === 'camera' ? 600 : 400,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
                     onClick={() => { setProofType('camera'); setCapturedPhoto(null); }}
                   >
-                    📷 Take Live Photo
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    Take Live Photo
                   </button>
                 </div>
 
@@ -826,7 +838,7 @@ export const FieldVisits = () => {
                       </div>
                     ) : (
                       <label className="file-upload-zone">
-                        <span style={{ fontSize: '2rem', marginBottom: 'var(--spacing-sm)' }}>📁</span>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary-color)', marginBottom: 'var(--spacing-sm)' }}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                         <span style={{ fontWeight: 600 }}>Click to select/upload image</span>
                         <span className="text-muted" style={{ fontSize: '0.85rem', marginTop: '4px' }}>PNG, JPG, JPEG up to 10MB</span>
                         <input
@@ -883,7 +895,7 @@ export const FieldVisits = () => {
                     fontSize: '0.85rem'
                   }}>
                     <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-main)' }}>
-                      ⏳ Previous Days' Submissions ({activeVisit.progressHistory.length})
+                      Previous Days' Submissions ({activeVisit.progressHistory.length})
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {activeVisit.progressHistory.map((progress, idx) => (

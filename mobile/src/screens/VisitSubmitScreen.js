@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Modal } from 'react-native';
-import { api } from '../context/AuthContext';
-import { COLORS, globalStyles } from '../styles/globalStyles';
+import { AuthContext, api } from '../context/AuthContext';
+import { globalStyles } from '../styles/globalStyles';
 import CameraCapture from '../components/CameraCapture';
 import * as ImagePicker from 'expo-image-picker';
 import MapWidget from '../components/MapWidget';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function VisitSubmitScreen({ route, navigation }) {
+  const { colors, theme } = useContext(AuthContext);
+  const COLORS = colors;
+  const styles = getStyles(colors);
   const { visitId } = route.params;
   const [visit, setVisit] = useState(null);
   const [userLoc, setUserLoc] = useState(null);
@@ -285,7 +289,10 @@ export default function VisitSubmitScreen({ route, navigation }) {
       {/* Back button and title */}
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.backBtn} onPress={navigation.goBack}>
-          <Text style={styles.backText}>← Back</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="arrow-back" size={16} color={COLORS.textMain} style={{ marginRight: 4 }} />
+            <Text style={styles.backText}>Back</Text>
+          </View>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>On-Site Audit Workspace</Text>
       </View>
@@ -307,13 +314,19 @@ export default function VisitSubmitScreen({ route, navigation }) {
           {distance === null ? (
             <Text style={[styles.statusText, { color: COLORS.warning }]}>Finding location...</Text>
           ) : isWithinGeofence ? (
-            <Text style={[styles.statusText, { color: COLORS.success }]}>
-              ✓ IN RANGE ({distance}m away)
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="checkmark-circle" size={14} color={COLORS.success} style={{ marginRight: 4 }} />
+              <Text style={[styles.statusText, { color: COLORS.success }]}>
+                IN RANGE ({distance}m away)
+              </Text>
+            </View>
           ) : (
-            <Text style={[styles.statusText, { color: COLORS.danger }]}>
-              ❌ OUT OF RANGE ({distance}m away)
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="close-circle" size={14} color={COLORS.danger} style={{ marginRight: 4 }} />
+              <Text style={[styles.statusText, { color: COLORS.danger }]}>
+                OUT OF RANGE ({distance}m away)
+              </Text>
+            </View>
           )}
         </View>
         {!isWithinGeofence && distance !== null && (
@@ -326,9 +339,12 @@ export default function VisitSubmitScreen({ route, navigation }) {
       {/* Conditional UI based on Visit Status */}
       {visit.status === 'pending' ? (
         <View style={globalStyles.card}>
-          <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 12 }]}>
-            🚀 Start Audit Session
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <Ionicons name="rocket-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+            <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 0 }]}>
+              Start Audit Session
+            </Text>
+          </View>
           <Text style={styles.description}>
             You must punch your starting location to initialize this audit session before uploading verification proofs.
           </Text>
@@ -347,9 +363,12 @@ export default function VisitSubmitScreen({ route, navigation }) {
       ) : (
         /* Upload Form Card */
         <View style={globalStyles.card}>
-          <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 12 }]}>
-            📸 Capture Evidence Proof (Code: {verificationCode || 'N/A'})
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <Ionicons name="camera-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+            <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 0 }]}>
+              Capture Evidence Proof (Code: {verificationCode || 'N/A'})
+            </Text>
+          </View>
 
           {photo ? (
             <View style={styles.photoContainer}>
@@ -360,14 +379,20 @@ export default function VisitSubmitScreen({ route, navigation }) {
                   onPress={() => setShowCamera(true)}
                   disabled={submitting}
                 >
-                  <Text style={styles.retakeText}>📷 Retake</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="camera" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.retakeText}>Retake</Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.retakeBtnItem, { borderLeftWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }]} 
                   onPress={handlePickImage}
                   disabled={submitting}
                 >
-                  <Text style={styles.retakeText}>🖼️ Gallery</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="image-outline" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.retakeText}>Gallery</Text>
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
@@ -378,7 +403,7 @@ export default function VisitSubmitScreen({ route, navigation }) {
                 onPress={() => setShowCamera(true)}
                 disabled={submitting || !isWithinGeofence}
               >
-                <Text style={styles.uploadOptionIcon}>📷</Text>
+                <Ionicons name="camera-outline" size={28} color={COLORS.primary} style={{ marginBottom: 8 }} />
                 <Text style={[styles.uploadOptionText, !isWithinGeofence ? { color: COLORS.textMuted } : null]}>Capture Camera</Text>
               </TouchableOpacity>
               <TouchableOpacity 
@@ -386,7 +411,7 @@ export default function VisitSubmitScreen({ route, navigation }) {
                 onPress={handlePickImage}
                 disabled={submitting || !isWithinGeofence}
               >
-                <Text style={styles.uploadOptionIcon}>🖼️</Text>
+                <Ionicons name="image-outline" size={28} color={COLORS.primary} style={{ marginBottom: 8 }} />
                 <Text style={[styles.uploadOptionText, !isWithinGeofence ? { color: COLORS.textMuted } : null]}>Upload Gallery</Text>
               </TouchableOpacity>
             </View>
@@ -439,7 +464,10 @@ export default function VisitSubmitScreen({ route, navigation }) {
                 {bypassLoading ? (
                   <ActivityIndicator color={COLORS.primary} size="small" />
                 ) : (
-                  <Text style={[globalStyles.btnText, { color: COLORS.primary }]}>🔧 Testing Bypass: Set Current GPS as Target</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="build-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+                    <Text style={[globalStyles.btnText, { color: COLORS.primary }]}>Testing Bypass: Set Current GPS as Target</Text>
+                  </View>
                 )}
               </TouchableOpacity>
             </View>
@@ -450,9 +478,12 @@ export default function VisitSubmitScreen({ route, navigation }) {
       {/* Previous Submissions History List */}
       {visit && visit.progressHistory && visit.progressHistory.length > 0 && (
         <View style={globalStyles.card}>
-          <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 12 }]}>
-            ⏳ Previous Days' Submissions ({visit.progressHistory.length})
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <Ionicons name="time-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+            <Text style={[globalStyles.title, { fontSize: 16, marginBottom: 0 }]}>
+              Previous Days' Submissions ({visit.progressHistory.length})
+            </Text>
+          </View>
           <View style={styles.timeline}>
             {visit.progressHistory.map((progress, idx) => (
               <View key={idx} style={styles.timelineItem}>
@@ -498,7 +529,7 @@ export default function VisitSubmitScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (COLORS) => StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',

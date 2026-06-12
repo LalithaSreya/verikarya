@@ -44,13 +44,15 @@ function AppContent() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={{ color: COLORS.textMuted, fontSize: 15, fontWeight: '600' }}>
+      <View style={[styles.centerContainer, { backgroundColor: '#F8FAFC' }]}>
+        <Text style={{ color: '#64748B', fontSize: 15, fontWeight: '600' }}>
           Initializing VeriKarya...
         </Text>
       </View>
     );
   }
+
+  const { colors, theme } = useContext(AuthContext);
 
   // Authentication Guard
   if (!isAuthenticated) {
@@ -87,8 +89,11 @@ function AppContent() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.card} />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]}>
+      <StatusBar 
+        barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} 
+        backgroundColor={colors.card} 
+      />
       {renderScreen()}
     </SafeAreaView>
   );
@@ -105,12 +110,10 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.bg,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.bg,
   },
 });
