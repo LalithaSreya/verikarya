@@ -35,6 +35,28 @@ const createTask = async (req, res) => {
       requireCode: requireCode !== undefined ? requireCode : true
     });
 
+    // Automatically send task assignment notification to customer via WhatsApp if clientPhone exists
+    if (clientPhone) {
+      try {
+        const msg = `Your service request for '${title}' has been assigned to ${employee.name} (Contact: ${employee.phone || 'N/A'}). He/She is expected to reach your location within 30 minutes.`;
+        await sendWhatsAppMessage(clientPhone, msg);
+        console.log(`[WHATSAPP] Sent task assignment notification to customer ${clientPhone}`);
+      } catch (err) {
+        console.error('Failed to send task assignment WhatsApp message to customer:', err.message);
+      }
+    }
+
+    // Automatically notify employee/technician via WhatsApp if employee.phone exists
+    if (employee.phone) {
+      try {
+        const msg = `Hello ${employee.name}, a new task '${title}' has been assigned to you by Manager. Deadline: ${new Date(deadline).toLocaleDateString()}. Please check your VeriKarya dashboard for details.`;
+        await sendWhatsAppMessage(employee.phone, msg);
+        console.log(`[WHATSAPP] Sent assignment alert to employee ${employee.phone}`);
+      } catch (err) {
+        console.error('Failed to send assignment alert WhatsApp message to employee:', err.message);
+      }
+    }
+
     res.status(201).json({
       success: true,
       data: task
@@ -263,7 +285,9 @@ const submitTaskEvidence = async (req, res) => {
     // 1. Notify Customer
     if (task.clientPhone) {
       try {
-        const msg = `Hello, the task '${task.title}' assigned by VeriKarya has been completed and submitted by ${employeeName} for verification.`;
+        const backendUrl = process.env.BACKEND_URL || 'https://verikarya.onrender.com';
+        const attachmentUrl = photoPath ? `${backendUrl}${photoPath}` : 'No attachment';
+        const msg = `Hello! The task '${task.title}' assigned by VeriKarya has been completed and submitted by ${employeeName} for verification.\nSubmission Notes: ${notes || 'No notes provided'}\nAttachment: ${attachmentUrl}`;
         await sendWhatsAppMessage(task.clientPhone, msg);
       } catch (err) {
         console.error('Failed to dispatch WhatsApp message to customer:', err.message);
@@ -327,6 +351,19 @@ const saveTaskProgress = async (req, res) => {
     }
 
     await task.save();
+
+    // Automatically send task progress notification to customer via WhatsApp if clientPhone exists
+    if (task.clientPhone) {
+      try {
+        const backendUrl = process.env.BACKEND_URL || 'https://verikarya.onrender.com';
+        const attachmentUrl = photoPath ? `${backendUrl}${photoPath}` : 'No attachment';
+        const msg = `Hello! The progress for task '${task.title}' has been updated.\nProgress Notes: ${notes || 'No notes provided'}\nAttachment: ${attachmentUrl}`;
+        await sendWhatsAppMessage(task.clientPhone, msg);
+        console.log(`[WHATSAPP] Sent task progress update to customer ${task.clientPhone}`);
+      } catch (err) {
+        console.error('Failed to send task progress WhatsApp message to customer:', err.message);
+      }
+    }
 
     res.status(200).json({
       success: true,

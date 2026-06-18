@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Image, ActivityIndicator, Modal } from 'react-native';
 import { AuthContext, api } from '../context/AuthContext';
 import { globalStyles } from '../styles/globalStyles';
@@ -8,7 +8,43 @@ import MapWidget from '../components/MapWidget';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
+const getCurrentLocationHelper = async () => {
+  const hasServices = await Location.hasServicesEnabledAsync();
+  if (!hasServices) {
+    throw new Error('GPS/Location services are disabled on your device. Please enable them in your settings.');
+  }
+  
+  try {
+    return await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+      timeout: 8000
+    });
+  } catch (highAccError) {
+    console.warn('High accuracy location fetch failed, trying balanced accuracy:', highAccError);
+    try {
+      return await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeout: 5000
+      });
+    } catch (balancedError) {
+      console.warn('Balanced accuracy location fetch failed, trying last known position:', balancedError);
+      const lastKnown = await Location.getLastKnownPositionAsync();
+      if (lastKnown) {
+        return lastKnown;
+      }
+      throw new Error('Unable to obtain GPS coordinates. Please ensure you have a clear sky view or check location settings.');
+    }
+  }
+};
+
 export default function VisitSubmitScreen({ route, navigation }) {
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   const { colors, theme } = useContext(AuthContext);
   const COLORS = colors;
   const styles = getStyles(colors);
@@ -85,13 +121,17 @@ export default function VisitSubmitScreen({ route, navigation }) {
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      let location = await getCurrentLocationHelper();
       const { latitude, longitude } = location.coords;
-      setUserLoc({ lat: latitude, lng: longitude });
+      if (isMountedRef.current) {
+        setUserLoc({ lat: latitude, lng: longitude });
+      }
 
       if (targetLat && targetLng) {
         const dist = calculateDistance(latitude, longitude, targetLat, targetLng);
-        setDistance(dist);
+        if (isMountedRef.current) {
+          setDistance(dist);
+        }
       }
     } catch (err) {
       console.error('Error tracking location:', err);
@@ -102,7 +142,9 @@ export default function VisitSubmitScreen({ route, navigation }) {
     try {
       const res = await api.get('/visits');
       const found = res.data.data.find(v => v._id === visitId);
-      setVisit(found);
+      if (isMountedRef.current) {
+        setVisit(found);
+      }
       
       if (found) {
         if (found.targetLocation) {
@@ -110,7 +152,7 @@ export default function VisitSubmitScreen({ route, navigation }) {
         }
         if (found.status === 'started') {
           const codeRes = await api.post(`/visits/${visitId}/request-code`);
-          if (codeRes.data.success) {
+          if (codeRes.data.success && isMountedRef.current) {
             setVerificationCode(codeRes.data.code);
           }
         }
@@ -119,7 +161,9 @@ export default function VisitSubmitScreen({ route, navigation }) {
       console.error('Error in fetch:', err);
       alert('Failed to load visit details.');
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -133,12 +177,14 @@ export default function VisitSubmitScreen({ route, navigation }) {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         alert('Permission to access location was denied. Location is required.');
-        setStartLoading(false);
+        if (isMountedRef.current) setStartLoading(false);
         return;
       }
-      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      let location = await getCurrentLocationHelper();
       const { latitude, longitude } = location.coords;
-      setUserLoc({ lat: latitude, lng: longitude });
+      if (isMountedRef.current) {
+        setUserLoc({ lat: latitude, lng: longitude });
+      }
 
       const res = await api.post(`/visits/${visitId}/start`, {
         location: {
@@ -151,19 +197,25 @@ export default function VisitSubmitScreen({ route, navigation }) {
         alert('Audit visit started successfully!');
         // Request code immediately
         const codeRes = await api.post(`/visits/${visitId}/request-code`);
-        if (codeRes.data.success) {
+        if (codeRes.data.success && isMountedRef.current) {
           setVerificationCode(codeRes.data.code);
         }
-        setVisit(res.data.data);
+        if (isMountedRef.current) {
+          setVisit(res.data.data);
+        }
         if (res.data.data.targetLocation) {
           const dist = calculateDistance(latitude, longitude, res.data.data.targetLocation.lat, res.data.data.targetLocation.lng);
-          setDistance(dist);
+          if (isMountedRef.current) {
+            setDistance(dist);
+          }
         }
       }
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to start visit.');
+      alert(err.message || err.response?.data?.error || 'Failed to start visit.');
     } finally {
-      setStartLoading(false);
+      if (isMountedRef.current) {
+        setStartLoading(false);
+      }
     }
   };
 
@@ -182,13 +234,17 @@ export default function VisitSubmitScreen({ route, navigation }) {
       });
       if (res.data.success) {
         alert('Bypassed geofence by setting target coordinates to your current coordinates!');
-        setVisit(res.data.data);
-        setDistance(0);
+        if (isMountedRef.current) {
+          setVisit(res.data.data);
+          setDistance(0);
+        }
       }
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to update target location.');
+      alert(err.message || err.response?.data?.error || 'Failed to update target location.');
     } finally {
-      setBypassLoading(false);
+      if (isMountedRef.current) {
+        setBypassLoading(false);
+      }
     }
   };
 
@@ -227,7 +283,9 @@ export default function VisitSubmitScreen({ route, navigation }) {
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to submit visit evidence.');
     } finally {
-      setSubmitting(false);
+      if (isMountedRef.current) {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -250,19 +308,25 @@ export default function VisitSubmitScreen({ route, navigation }) {
 
       if (res.data.success) {
         alert('Daily progress saved successfully!');
-        setVisit(res.data.data);
-        setPhoto(null);
-        setNotes('');
+        if (isMountedRef.current) {
+          setVisit(res.data.data);
+          setPhoto(null);
+          setNotes('');
+        }
         // Re-calculate geofence values just in case
         if (res.data.data.targetLocation && userLoc) {
           const dist = calculateDistance(userLoc.lat, userLoc.lng, res.data.data.targetLocation.lat, res.data.data.targetLocation.lng);
-          setDistance(dist);
+          if (isMountedRef.current) {
+            setDistance(dist);
+          }
         }
       }
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to save progress.');
     } finally {
-      setSubmitting(false);
+      if (isMountedRef.current) {
+        setSubmitting(false);
+      }
     }
   };
 

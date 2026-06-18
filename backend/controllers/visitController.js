@@ -39,6 +39,28 @@ const createVisit = async (req, res) => {
       clientPhone
     });
 
+    // Automatically send visit assignment notification to customer via WhatsApp if clientPhone exists
+    if (clientPhone) {
+      try {
+        const msg = `Your service request for '${purpose}' has been assigned to ${employee.name} (Contact: ${employee.phone || 'N/A'}). He/She is expected to reach your location within 30 minutes.`;
+        await sendWhatsAppMessage(clientPhone, msg);
+        console.log(`[WHATSAPP] Sent visit assignment notification to customer ${clientPhone}`);
+      } catch (err) {
+        console.error('Failed to send visit assignment WhatsApp message to customer:', err.message);
+      }
+    }
+
+    // Automatically notify employee/auditor via WhatsApp if employee.phone exists
+    if (employee.phone) {
+      try {
+        const msg = `Hello ${employee.name}, a new field audit visit for '${clientName}' has been assigned to you by Manager. Purpose: '${purpose}'. Deadline: ${new Date(deadline).toLocaleDateString()}. Please check your VeriKarya dashboard for details.`;
+        await sendWhatsAppMessage(employee.phone, msg);
+        console.log(`[WHATSAPP] Sent assignment alert to employee ${employee.phone}`);
+      } catch (err) {
+        console.error('Failed to send assignment alert WhatsApp message to employee:', err.message);
+      }
+    }
+
     res.status(201).json({
       success: true,
       data: visit
@@ -288,7 +310,9 @@ const submitVisitEvidence = async (req, res) => {
     // 1. Notify Customer
     if (visit.clientPhone) {
       try {
-        const msg = `Hello, the audit visit for '${visit.clientName}' has been completed and submitted by ${employeeName} for verification.`;
+        const backendUrl = process.env.BACKEND_URL || 'https://verikarya.onrender.com';
+        const attachmentUrl = photoPath ? `${backendUrl}${photoPath}` : 'No attachment';
+        const msg = `Hello! The audit visit for '${visit.clientName}' has been completed and submitted by ${employeeName} for verification.\nSubmission Notes: ${notes || 'No notes provided'}\nAttachment: ${attachmentUrl}`;
         await sendWhatsAppMessage(visit.clientPhone, msg);
       } catch (err) {
         console.error('Failed to dispatch WhatsApp message to customer:', err.message);
@@ -403,6 +427,19 @@ const saveVisitProgress = async (req, res) => {
     }
 
     await visit.save();
+
+    // Automatically send visit progress notification to customer via WhatsApp if clientPhone exists
+    if (visit.clientPhone) {
+      try {
+        const backendUrl = process.env.BACKEND_URL || 'https://verikarya.onrender.com';
+        const attachmentUrl = photoPath ? `${backendUrl}${photoPath}` : 'No attachment';
+        const msg = `Hello! The progress for the audit visit at '${visit.clientName}' has been updated.\nProgress Notes: ${notes || 'No notes provided'}\nAttachment: ${attachmentUrl}`;
+        await sendWhatsAppMessage(visit.clientPhone, msg);
+        console.log(`[WHATSAPP] Sent visit progress update to customer ${visit.clientPhone}`);
+      } catch (err) {
+        console.error('Failed to send visit progress WhatsApp message to customer:', err.message);
+      }
+    }
 
     res.status(200).json({
       success: true,

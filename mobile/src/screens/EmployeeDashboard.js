@@ -1,9 +1,38 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, Platform } from 'react-native';
 import { AuthContext, api } from '../context/AuthContext';
 import CameraCapture from '../components/CameraCapture';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+
+const getCurrentLocationHelper = async () => {
+  const hasServices = await Location.hasServicesEnabledAsync();
+  if (!hasServices) {
+    throw new Error('GPS/Location services are disabled on your device. Please enable them in your settings.');
+  }
+  
+  try {
+    return await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+      timeout: 8000
+    });
+  } catch (highAccError) {
+    console.warn('High accuracy location fetch failed, trying balanced accuracy:', highAccError);
+    try {
+      return await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeout: 5000
+      });
+    } catch (balancedError) {
+      console.warn('Balanced accuracy location fetch failed, trying last known position:', balancedError);
+      const lastKnown = await Location.getLastKnownPositionAsync();
+      if (lastKnown) {
+        return lastKnown;
+      }
+      throw new Error('Unable to obtain GPS coordinates. Please ensure you have a clear sky view or check location settings.');
+    }
+  }
+};
 
 export default function EmployeeDashboard({ navigation }) {
   const { user, logout, colors, theme, toggleTheme } = useContext(AuthContext);
@@ -21,6 +50,14 @@ export default function EmployeeDashboard({ navigation }) {
   const [punchMessage, setPunchMessage] = useState('');
   const [bypassLoading, setBypassLoading] = useState(false);
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const styles = getStyles(colors);
 
   const loadDashboardData = async () => {
@@ -28,21 +65,23 @@ export default function EmployeeDashboard({ navigation }) {
       setLoading(true);
       // 1. Fetch attendance status
       const attRes = await api.get('/attendance/today');
-      setAttendance(attRes.data.data);
+      if (isMountedRef.current) setAttendance(attRes.data.data);
 
       // 2. Fetch tasks
       const tasksRes = await api.get('/tasks');
-      setTasks(tasksRes.data.data.filter(t => t.status !== 'completed'));
+      if (isMountedRef.current) setTasks(tasksRes.data.data.filter(t => t.status !== 'completed'));
 
       // 3. Fetch visits
       const visitsRes = await api.get('/visits');
-      setVisits(visitsRes.data.data.filter(v => v.status !== 'completed'));
+      if (isMountedRef.current) setVisits(visitsRes.data.data.filter(v => v.status !== 'completed'));
 
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
@@ -70,12 +109,12 @@ export default function EmployeeDashboard({ navigation }) {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         alert('Permission to access location was denied. Location is required to verify attendance.');
-        setPunchLoading(false);
+        if (isMountedRef.current) setPunchLoading(false);
         return;
       }
 
-      // 2. Get high-accuracy GPS coordinates
-      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      // 2. Get GPS coordinates using helper
+      let location = await getCurrentLocationHelper();
       const { latitude, longitude } = location.coords;
 
       // 3. Request verification code from backend first
@@ -83,13 +122,15 @@ export default function EmployeeDashboard({ navigation }) {
       const codeRes = await api.post('/attendance/request-code', { action: actionType });
       if (!codeRes.data.success) {
         alert('Failed to generate verification code.');
-        setPunchLoading(false);
+        if (isMountedRef.current) setPunchLoading(false);
         return;
       }
       const verificationCode = codeRes.data.code;
 
       // 4. Submit punch to backend
-      setPunchMessage(cameraMode === 'in' ? 'Clocking In...' : 'Clocking Out...');
+      if (isMountedRef.current) {
+        setPunchMessage(cameraMode === 'in' ? 'Clocking In...' : 'Clocking Out...');
+      }
       const endpoint = cameraMode === 'in' ? '/attendance/checkin' : '/attendance/checkout';
       const res = await api.post(endpoint, {
         photo: photoBase64,
@@ -102,13 +143,15 @@ export default function EmployeeDashboard({ navigation }) {
 
       if (res.data.success) {
         alert(`Success! Attendance verified. Verification code: ${verificationCode}`);
-        loadDashboardData();
+        if (isMountedRef.current) loadDashboardData();
       }
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to submit attendance punch.');
+      alert(err.message || err.response?.data?.error || 'Failed to submit attendance punch.');
     } finally {
-      setPunchLoading(false);
-      setPunchMessage('');
+      if (isMountedRef.current) {
+        setPunchLoading(false);
+        setPunchMessage('');
+      }
     }
   };
 
@@ -118,10 +161,10 @@ export default function EmployeeDashboard({ navigation }) {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         alert('Permission to access location was denied. Location is required.');
-        setBypassLoading(false);
+        if (isMountedRef.current) setBypassLoading(false);
         return;
       }
-      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      let location = await getCurrentLocationHelper();
       const { latitude, longitude } = location.coords;
 
       const res = await api.put('/auth/office-location', {
@@ -135,9 +178,9 @@ export default function EmployeeDashboard({ navigation }) {
         alert('Office location successfully updated to your current coordinates! You can now clock in/out.');
       }
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to update office location.');
+      alert(err.message || err.response?.data?.error || 'Failed to update office location.');
     } finally {
-      setBypassLoading(false);
+      if (isMountedRef.current) setBypassLoading(false);
     }
   };
 
