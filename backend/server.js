@@ -7,15 +7,25 @@ const connectDB = require('./config/db');
 // Load environment variables
 dotenv.config();
 
+// Enforce JWT_SECRET in production
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('FATAL ERROR: JWT_SECRET environment variable is missing in production!');
+  process.exit(1);
+}
+
 // Connect to Database
 connectDB();
 
 const app = express();
 
 // Middleware
-// Enable CORS for our React frontend (running on Vite, typically port 5173)
+// Enable CORS for our React frontend
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? (process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : ['https://verikarya.vercel.app', 'https://verikarya.onrender.com'])
+  : '*';
+
 app.use(cors({
-  origin: '*', // Allow all in MVP, but can restrict to frontend URL
+  origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));

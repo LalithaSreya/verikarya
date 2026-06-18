@@ -135,6 +135,13 @@ const updateOfficeLocation = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Please provide valid location coordinates' });
     }
 
+    const latNum = parseFloat(location.lat);
+    const lngNum = parseFloat(location.lng);
+
+    if (isNaN(latNum) || latNum < -90 || latNum > 90 || isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+      return res.status(400).json({ success: false, error: 'Latitude must be between -90 and 90, and longitude between -180 and 180' });
+    }
+
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
@@ -317,7 +324,15 @@ const updateEmployee = async (req, res) => {
     if (name) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;
     if (officeLocation) {
-      updateData.officeLocation = officeLocation;
+      if (officeLocation.lat === undefined || officeLocation.lng === undefined) {
+        return res.status(400).json({ success: false, error: 'Please provide valid office coordinates (lat and lng)' });
+      }
+      const latNum = parseFloat(officeLocation.lat);
+      const lngNum = parseFloat(officeLocation.lng);
+      if (isNaN(latNum) || latNum < -90 || latNum > 90 || isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+        return res.status(400).json({ success: false, error: 'Office Latitude must be between -90 and 90, and longitude between -180 and 180' });
+      }
+      updateData.officeLocation = { lat: latNum, lng: lngNum };
     }
 
     if (email && email.toLowerCase() !== user.email.toLowerCase()) {

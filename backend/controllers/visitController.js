@@ -23,6 +23,13 @@ const createVisit = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Please provide valid latitude and longitude coordinates' });
     }
 
+    const latNum = parseFloat(targetLocation.lat);
+    const lngNum = parseFloat(targetLocation.lng);
+
+    if (isNaN(latNum) || latNum < -90 || latNum > 90 || isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+      return res.status(400).json({ success: false, error: 'Latitude must be between -90 and 90, and longitude between -180 and 180' });
+    }
+
     // Verify assignee is an employee
     const employee = await User.findById(assignedTo);
     if (!employee || employee.role !== 'employee') {

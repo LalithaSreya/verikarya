@@ -16,7 +16,7 @@ export const ManagerDashboard = () => {
       const res = await api.post('/auth/seed');
       if (res.data.success) {
         alert('Database reset and seeded successfully! Logging out to log in with seeded accounts.');
-        localStorage.removeItem('token');
+        localStorage.removeItem('verikarya_token');
         window.location.href = '/login';
       }
     } catch (err) {
