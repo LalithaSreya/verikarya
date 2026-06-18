@@ -49,7 +49,12 @@ const createVisit = async (req, res) => {
     // Automatically send visit assignment notification to customer via WhatsApp if clientPhone exists
     if (clientPhone) {
       try {
-        const msg = `Your service request for '${purpose}' has been assigned to ${employee.name} (Contact: ${employee.phone || 'N/A'}). He/She is expected to reach your location within 30 minutes.`;
+        const formattedTime = new Date(deadline).toLocaleString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        });
+        const msg = `Your service request for '${purpose}' has been assigned to ${employee.name} (Contact: ${employee.phone || 'N/A'}). He/She is expected to reach your location within ${formattedTime}.`;
         await sendWhatsAppMessage(clientPhone, msg);
         console.log(`[WHATSAPP] Sent visit assignment notification to customer ${clientPhone}`);
       } catch (err) {

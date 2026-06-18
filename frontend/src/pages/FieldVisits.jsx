@@ -93,12 +93,7 @@ export const FieldVisits = () => {
       return;
     }
 
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const selectedDeadline = new Date(deadline);
-    selectedDeadline.setHours(0,0,0,0);
-
-    if (selectedDeadline < today) {
+    if (new Date(deadline) < new Date()) {
       setFormError('Deadline cannot be in the past.');
       return;
     }
@@ -922,13 +917,13 @@ export const FieldVisits = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Deadline</label>
+                  <label className="form-label">Deadline Date & Time</label>
                   <input 
-                    type="date" 
+                    type="datetime-local" 
                     className="form-input"
                     value={deadline}
                     onChange={(e) => setDeadline(e.target.value)}
-                    min={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0]}
+                    min={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().slice(0, 16)}
                     required
                   />
                 </div>
