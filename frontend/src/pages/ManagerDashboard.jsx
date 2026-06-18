@@ -9,6 +9,7 @@ export const ManagerDashboard = () => {
   const [error, setError] = useState('');
   const [showSeedConfirm, setShowSeedConfirm] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [twilioSimulationMode, setTwilioSimulationMode] = useState(true);
 
   const handleResetSeed = async () => {
     setSeeding(true);
@@ -32,13 +33,15 @@ export const ManagerDashboard = () => {
       setLoading(true);
       setError('');
       
-      const [statsRes, reviewsRes] = await Promise.all([
+      const [statsRes, reviewsRes, configRes] = await Promise.all([
         api.get('/reviews/analytics'),
-        api.get('/reviews?status=pending')
+        api.get('/reviews?status=pending'),
+        api.get('/auth/config').catch(() => ({ data: { twilioSimulationMode: true } }))
       ]);
 
       setStats(statsRes.data.data);
       setPendingReviews(reviewsRes.data.data);
+      setTwilioSimulationMode(configRes.data.twilioSimulationMode);
     } catch (err) {
       console.error('Error fetching manager dashboard data:', err);
       setError('Failed to fetch dashboard metrics. Make sure you are logged in as a manager.');
@@ -76,24 +79,26 @@ export const ManagerDashboard = () => {
   return (
     <div>
       {/* Twilio Simulator Mode Alert Banner */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '12px', 
-        padding: '12px 16px', 
-        backgroundColor: '#FEF3C7', 
-        border: '1px solid #FCD34D', 
-        borderRadius: '8px', 
-        color: '#92400E', 
-        fontSize: '0.9rem', 
-        marginBottom: 'var(--spacing-md)',
-        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-      }}>
-        <span style={{ fontSize: '1.2rem' }}>⚠️</span>
-        <div>
-          <strong>Twilio Gateway Simulator:</strong> The system is currently running in local Simulation Mode. All verification codes and message notifications are logged directly to the backend database outbox instead of live cellular delivery. View outbox messages in the <Link to="/whatsapp-logs" style={{ textDecoration: 'underline', fontWeight: 'bold', color: 'inherit' }}>WhatsApp Logs</Link> console.
+      {twilioSimulationMode && (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '12px', 
+          padding: '12px 16px', 
+          backgroundColor: '#FEF3C7', 
+          border: '1px solid #FCD34D', 
+          borderRadius: '8px', 
+          color: '#92400E', 
+          fontSize: '0.9rem', 
+          marginBottom: 'var(--spacing-md)',
+          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+        }}>
+          <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+          <div>
+            <strong>Twilio Gateway Simulator:</strong> The system is currently running in local Simulation Mode. All verification codes and message notifications are logged directly to the backend database outbox instead of live cellular delivery. View outbox messages in the <Link to="/whatsapp-logs" style={{ textDecoration: 'underline', fontWeight: 'bold', color: 'inherit' }}>WhatsApp Logs</Link> console.
+          </div>
         </div>
-      </div>
+      )}
 
       <div style={{ marginBottom: 'var(--spacing-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
