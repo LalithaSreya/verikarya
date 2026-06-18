@@ -375,6 +375,52 @@ const saveTaskProgress = async (req, res) => {
   }
 };
 
+const deleteTask = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ success: false, error: 'Task not found' });
+    }
+
+    // Clean up dependent resources
+    await VerificationCode.deleteMany({ referenceId: task._id });
+    await Review.deleteMany({ referenceId: task._id });
+    await Evidence.deleteMany({ referenceId: task._id });
+
+    await task.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Task deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const bulkDeleteTasks = async (req, res) => {
+  try {
+    const { taskIds } = req.body;
+    if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'Please provide an array of task IDs to delete' });
+    }
+
+    // Clean up dependent resources
+    await VerificationCode.deleteMany({ referenceId: { $in: taskIds } });
+    await Review.deleteMany({ referenceId: { $in: taskIds } });
+    await Evidence.deleteMany({ referenceId: { $in: taskIds } });
+
+    await Task.deleteMany({ _id: { $in: taskIds } });
+
+    res.status(200).json({
+      success: true,
+      message: `${taskIds.length} tasks deleted successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   createTask,
   getTasks,
@@ -382,5 +428,7 @@ module.exports = {
   updateTaskStatus,
   requestTaskCode,
   submitTaskEvidence,
-  saveTaskProgress
+  saveTaskProgress,
+  deleteTask,
+  bulkDeleteTasks
 };

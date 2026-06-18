@@ -41,6 +41,22 @@ export const FieldVisits = () => {
   const [codeLoading, setCodeLoading] = useState(false);
   const [proofType, setProofType] = useState('gallery'); // 'gallery' or 'camera'
 
+  // Selection & Actions State
+  const [selectedVisits, setSelectedVisits] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
+  const [isGlobalSelected, setIsGlobalSelected] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteMode, setDeleteMode] = useState('single'); // 'single' | 'bulk'
+  const [visitToDelete, setVisitToDelete] = useState(null);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+
+  useEffect(() => {
+    setLastSelectedIndex(null);
+  }, [currentPage]);
+
   // Fetch data
   const fetchData = async () => {
     try {
@@ -102,8 +118,7 @@ export const FieldVisits = () => {
         setDeadline('');
         setClientPhone('');
         // Reload visits
-        const visitsRes = await api.get('/visits');
-        setVisits(visitsRes.data.data);
+        fetchData();
       }
     } catch (err) {
       setFormError(err.response?.data?.error || 'Failed to create field visit.');
@@ -115,9 +130,7 @@ export const FieldVisits = () => {
   // Employee: Start Visit
   const handleStartVisit = async (visitId) => {
     try {
-      // First, get employee current GPS coordinates
       const loc = await getLocation();
-      
       const res = await api.post(`/visits/${visitId}/start`, {
         location: {
           lat: loc.lat,
@@ -126,9 +139,7 @@ export const FieldVisits = () => {
       });
 
       if (res.data.success) {
-        // Refresh visits list
-        const visitsRes = await api.get('/visits');
-        setVisits(visitsRes.data.data);
+        fetchData();
       }
     } catch (err) {
       alert(typeof err === 'string' ? err : (err.response?.data?.error || 'Could not access GPS. Please allow permissions.'));
@@ -157,8 +168,6 @@ export const FieldVisits = () => {
     try {
       const loc = await getLocation();
       
-      // Calculate distance on backend or locally
-      // To perform a rigorous check, we check distance using Haversine locally for immediate feedback
       const distance = getDistanceInMeters(
         loc.lat,
         loc.lng,
@@ -247,6 +256,15 @@ export const FieldVisits = () => {
     setProofType('gallery');
   };
 
+  const handleCloseAttempt = () => {
+    const hasProgress = capturedPhoto || submissionNotes || verificationCode || gpsCheckPassed;
+    if (hasProgress) {
+      setShowDiscardConfirm(true);
+    } else {
+      closeSubmitModal();
+    }
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -274,7 +292,6 @@ export const FieldVisits = () => {
     setModalError('');
 
     try {
-      // Re-fetch current location to send with submission
       const loc = await getLocation();
 
       const res = await api.post(`/visits/${activeVisit._id}/submit`, {
@@ -289,9 +306,7 @@ export const FieldVisits = () => {
 
       if (res.data.success) {
         closeSubmitModal();
-        // Refresh visits list
-        const visitsRes = await api.get('/visits');
-        setVisits(visitsRes.data.data);
+        fetchData();
       }
     } catch (err) {
       setModalError(err.response?.data?.error || 'Failed to submit field visit evidence.');
@@ -315,9 +330,7 @@ export const FieldVisits = () => {
 
       if (res.data.success) {
         closeSubmitModal();
-        // Refresh visits list
-        const visitsRes = await api.get('/visits');
-        setVisits(visitsRes.data.data);
+        fetchData();
       }
     } catch (err) {
       setModalError(err.response?.data?.error || 'Failed to save daily progress.');
@@ -325,6 +338,102 @@ export const FieldVisits = () => {
       setModalSubmitting(false);
     }
   };
+
+  // Selection Logic
+  const handleClearSelection = () => {
+    setSelectedVisits([]);
+    setIsGlobalSelected(false);
+    setLastSelectedIndex(null);
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      const pageVisitIds = paginatedVisits.map(v => v._id);
+      setSelectedVisits(Array.from(new Set([...selectedVisits, ...pageVisitIds])));
+    } else {
+      const pageVisitIds = paginatedVisits.map(v => v._id);
+      setSelectedVisits(selectedVisits.filter(id => !pageVisitIds.includes(id)));
+      setIsGlobalSelected(false);
+    }
+  };
+
+  const handleSelectVisit = (e, id, index) => {
+    const isChecked = e.target.checked;
+    if (e.nativeEvent.shiftKey && lastSelectedIndex !== null) {
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      const rangeIds = paginatedVisits.slice(start, end + 1).map(v => v._id);
+      if (isChecked) {
+        setSelectedVisits(prev => Array.from(new Set([...prev, ...rangeIds])));
+      } else {
+        setSelectedVisits(prev => prev.filter(item => !rangeIds.includes(item)));
+        setIsGlobalSelected(false);
+      }
+    } else {
+      if (isChecked) {
+        setSelectedVisits(prev => [...prev, id]);
+      } else {
+        setSelectedVisits(prev => prev.filter(item => item !== id));
+        setIsGlobalSelected(false);
+      }
+    }
+    setLastSelectedIndex(index);
+  };
+
+  // Delete Actions
+  const handleDeleteClick = (visit) => {
+    setVisitToDelete(visit);
+    setDeleteMode('single');
+    setShowDeleteConfirm(true);
+  };
+
+  const handleBulkDeleteClick = () => {
+    setDeleteMode('bulk');
+    setShowDeleteConfirm(true);
+  };
+
+  const executeSingleDelete = async (id) => {
+    try {
+      const res = await api.delete(`/visits/${id}`);
+      if (res.data.success) {
+        handleClearSelection();
+        fetchData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete visit.');
+    }
+  };
+
+  const executeBulkDelete = async () => {
+    try {
+      const res = await api.delete('/visits', { data: { visitIds: selectedVisits } });
+      if (res.data.success) {
+        handleClearSelection();
+        fetchData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete selected visits.');
+    }
+  };
+
+  // Search logic
+  const filteredVisits = visits.filter(visit => {
+    const query = searchTerm.toLowerCase();
+    const clientMatch = visit.clientName.toLowerCase().includes(query);
+    const purposeMatch = visit.purpose.toLowerCase().includes(query);
+    const empMatch = visit.assignedTo?.name?.toLowerCase().includes(query);
+    const statusMatch = visit.status.toLowerCase().includes(query);
+    return clientMatch || purposeMatch || empMatch || statusMatch;
+  });
+
+  const totalPages = Math.ceil(filteredVisits.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const paginatedVisits = itemsPerPage === -1
+    ? filteredVisits
+    : filteredVisits.slice(indexOfFirstItem, indexOfLastItem);
+
+  const allPageSelected = paginatedVisits.length > 0 && paginatedVisits.every(v => selectedVisits.includes(v._id));
 
   return (
     <DashboardLayout>
@@ -337,196 +446,365 @@ export const FieldVisits = () => {
         </p>
       </div>
 
+      {isManager && selectedVisits.length > 0 && (
+        <div className="card" style={{
+          backgroundColor: 'var(--primary-light)',
+          borderColor: 'var(--primary-color)',
+          marginBottom: 'var(--spacing-md)',
+          padding: '12px 16px',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
+            <div style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>
+              Selected <strong style={{ color: 'var(--primary-color)' }}>{selectedVisits.length}</strong> audit{selectedVisits.length > 1 ? 's' : ''}.
+              {allPageSelected && filteredVisits.length > paginatedVisits.length && !isGlobalSelected && (
+                <span style={{ marginLeft: '12px' }}>
+                  All {paginatedVisits.length} records on this page are selected.{' '}
+                  <button 
+                    onClick={() => {
+                      setSelectedVisits(filteredVisits.map(v => v._id));
+                      setIsGlobalSelected(true);
+                    }}
+                    style={{
+                      background: 'none', border: 'none', color: 'var(--primary-color)',
+                      textDecoration: 'underline', fontWeight: 700, cursor: 'pointer', padding: 0
+                    }}
+                  >
+                    Select all {filteredVisits.length} records matching search
+                  </button>
+                </span>
+              )}
+              {isGlobalSelected && (
+                <span style={{ marginLeft: '12px', color: 'var(--text-muted)' }}>
+                  All {filteredVisits.length} matching records are selected.{' '}
+                  <button 
+                    onClick={handleClearSelection}
+                    style={{
+                      background: 'none', border: 'none', color: 'var(--primary-color)',
+                      textDecoration: 'underline', fontWeight: 700, cursor: 'pointer', padding: 0
+                    }}
+                  >
+                    Clear selection
+                  </button>
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+              <button className="btn btn-outline" onClick={handleClearSelection} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
+                Clear Selection
+              </button>
+              <button className="btn btn-danger" onClick={handleBulkDeleteClick} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                Delete Selected
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid-dashboard">
         
         {/* Left Column: Visits List */}
         <div>
           <div className="card">
-            <h3 style={{ marginBottom: 'var(--spacing-md)' }}>On-Site Audits Schedule</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
+              <h3 style={{ margin: 0 }}>On-Site Audits Schedule</h3>
+              {isManager && paginatedVisits.length > 0 && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none', fontWeight: 600 }}>
+                  <input 
+                    type="checkbox" 
+                    checked={allPageSelected}
+                    onChange={handleSelectAll}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  Select Page Audits
+                </label>
+              )}
+            </div>
+
+            <div style={{ position: 'relative', marginBottom: 'var(--spacing-md)' }}>
+              <input 
+                type="text" 
+                placeholder="Search audits by client name, purpose, or technician..." 
+                className="form-input"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                  handleClearSelection();
+                }}
+                style={{ paddingRight: searchTerm ? '32px' : '12px' }}
+              />
+              {searchTerm && (
+                <button 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCurrentPage(1);
+                    handleClearSelection();
+                  }}
+                  style={{
+                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+                    fontSize: '1.2rem', padding: '4px'
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
 
             {loading ? (
               <p className="text-muted">Loading on-site audits...</p>
-            ) : visits.length === 0 ? (
+            ) : paginatedVisits.length === 0 ? (
               <p className="text-muted" style={{ padding: 'var(--spacing-lg)', textAlign: 'center' }}>
-                No on-site audits logged in the system.
+                No audits logged in the system matching query.
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-                {visits.map((visit) => (
+                {paginatedVisits.map((visit, index) => (
                   <div key={visit._id} style={{
                     border: '1px solid var(--border-color)',
                     borderRadius: 'var(--border-radius-md)',
                     padding: 'var(--spacing-md)',
-                    backgroundColor: visit.status === 'submitted' ? 'var(--bg-color)' : 'white'
+                    backgroundColor: selectedVisits.includes(visit._id) ? 'var(--primary-light)' : (visit.status === 'submitted' ? 'var(--bg-color)' : 'white'),
+                    transition: 'background-color 0.2s ease'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--spacing-xs)' }}>
-                      <div>
-                        <h4 style={{ margin: 0, fontSize: '1.05rem' }}>{visit.clientName}</h4>
-                        <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '2px' }}>{visit.purpose}</div>
-                      </div>
-                      <span className={`badge badge-${visit.status}`}>
-                        {visit.status}
-                      </span>
-                    </div>
-
-                    <div style={{ margin: 'var(--spacing-md) 0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }} className="text-muted">
-                        <span><b>Coordinates: </b>{visit.targetLocation.lat}, {visit.targetLocation.lng}</span>
-                        <span><b>Deadline: </b>{new Date(visit.deadline).toLocaleDateString()}</span>
-                      </div>
-                      
-                      {/* Interactive map display when active and started by Employee */}
-                      {isEmployee && visit.status === 'started' && (
-                        <div style={{ marginTop: 'var(--spacing-sm)' }}>
-                          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-color)', marginBottom: '4px' }}>
-                            Target Geofence (Teal Circle = 100m Range)
-                          </div>
-                          <LeafletMap 
-                            targetLoc={visit.targetLocation}
-                            currentLoc={currentLoc}
-                          />
-                        </div>
+                    <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'flex-start' }}>
+                      {isManager && (
+                        <input 
+                          type="checkbox" 
+                          checked={selectedVisits.includes(visit._id)}
+                          onChange={(e) => handleSelectVisit(e, visit._id, index)}
+                          style={{ cursor: 'pointer', marginTop: '6px', transform: 'scale(1.1)' }}
+                        />
                       )}
-                    </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--spacing-sm)', fontSize: '0.825rem', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--spacing-sm)' }} className="text-muted">
-                      <div>
-                        <b>Assigned To: </b>{visit.assignedTo?.name || 'Unassigned'}
-                      </div>
-                      <div>
-                        {visit.status === 'submitted' && visit.distanceToTarget !== undefined && (
-                          <div style={{ color: 'var(--success-color)', fontWeight: 600 }}>
-                            Validated at distance: {visit.distanceToTarget} meters
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--spacing-xs)' }}>
+                          <div>
+                            <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>{visit.clientName}</h4>
+                            <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '2px' }}>{visit.purpose}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <span className={`badge badge-${visit.status}`}>
+                              {visit.status}
+                            </span>
+                            {isManager && (
+                              <button 
+                                className="btn btn-outline btn-sm" 
+                                style={{ padding: '4px', borderColor: 'var(--danger-color)', color: 'var(--danger-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                onClick={() => handleDeleteClick(visit)}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{ margin: 'var(--spacing-md) 0' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }} className="text-muted">
+                            <span><b>Coordinates: </b>{visit.targetLocation.lat}, {visit.targetLocation.lng}</span>
+                            <span><b>Deadline: </b>{new Date(visit.deadline).toLocaleDateString()}</span>
+                          </div>
+                          
+                          {/* Interactive map display when active and started by Employee */}
+                          {isEmployee && visit.status === 'started' && (
+                            <div style={{ marginTop: 'var(--spacing-sm)' }}>
+                              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--primary-color)', marginBottom: '4px' }}>
+                                Target Geofence (Teal Circle = 100m Range)
+                              </div>
+                              <LeafletMap 
+                                targetLoc={visit.targetLocation}
+                                currentLoc={currentLoc}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--spacing-sm)', fontSize: '0.825rem', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--spacing-sm)' }} className="text-muted">
+                          <div>
+                            <b>Assigned To: </b>{visit.assignedTo?.name || 'Unassigned'}
+                          </div>
+                          <div>
+                            {visit.status === 'submitted' && visit.distanceToTarget !== undefined && (
+                              <div style={{ color: 'var(--success-color)', fontWeight: 600 }}>
+                                Validated at distance: {visit.distanceToTarget} meters
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Progress History timeline logs */}
+                        {visit.progressHistory && visit.progressHistory.length > 0 && (
+                          <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-sm)', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--border-radius-sm)', fontSize: '0.85rem' }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>Saved Progress Logs ({visit.progressHistory.length})</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {visit.progressHistory.map((progress, idx) => (
+                                <div key={idx} style={{ 
+                                  borderLeft: '2px solid var(--primary-color)', paddingLeft: '6px', fontSize: '0.8rem',
+                                  display: 'flex', gap: '10px', alignItems: 'flex-start'
+                                }}>
+                                  <div style={{ flex: 1 }}>
+                                    <span style={{ color: 'var(--text-muted)' }}>{new Date(progress.timestamp).toLocaleDateString()}: </span>
+                                    <span>{progress.notes || 'Progress update logged.'}</span>
+                                  </div>
+                                  {progress.photoPath && (
+                                    <img 
+                                      src={progress.photoPath} alt="Progress log" 
+                                      style={{ 
+                                        width: '70px', height: '50px', objectFit: 'cover', borderRadius: '4px',
+                                        border: '1px solid var(--border-color)', cursor: 'pointer' 
+                                      }}
+                                      onClick={() => window.open(progress.photoPath, '_blank')}
+                                    />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
-                      </div>
-                    </div>
-                                    {/* Progress History timeline logs */}
-                    {visit.progressHistory && visit.progressHistory.length > 0 && (
-                      <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-sm)', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--border-radius-sm)', fontSize: '0.85rem' }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>Saved Progress Logs ({visit.progressHistory.length})</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {visit.progressHistory.map((progress, idx) => (
-                            <div key={idx} style={{ 
-                              borderLeft: '2px solid var(--primary-color)', 
-                              paddingLeft: '6px', 
-                              fontSize: '0.8rem',
-                              display: 'flex',
-                              gap: '10px',
-                              alignItems: 'flex-start'
-                            }}>
+
+                        {/* Completed Evidence block */}
+                        {visit.status === 'submitted' && visit.evidence && (
+                          <div style={{ 
+                            marginTop: 'var(--spacing-md)', padding: 'var(--spacing-sm)', 
+                            backgroundColor: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', 
+                            borderRadius: 'var(--border-radius-sm)', fontSize: '0.85rem' 
+                          }}>
+                            <div style={{ fontWeight: 'bold', color: 'var(--success-color)', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>
+                              ✓ Audit Completion Evidence
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                               <div style={{ flex: 1 }}>
-                                <span style={{ color: 'var(--text-muted)' }}>{new Date(progress.timestamp).toLocaleDateString()}: </span>
-                                <span>{progress.notes || 'Progress update logged.'}</span>
+                                {visit.evidence.notes && <p style={{ margin: '0 0 6px 0', fontSize: '0.8rem' }}><b>Notes:</b> {visit.evidence.notes}</p>}
+                                {visit.verificationCode && (
+                                  <p style={{ margin: 0, fontSize: '0.8rem' }}>
+                                    <b>Client Code:</b> <span style={{ fontFamily: 'monospace', padding: '2px 6px', backgroundColor: 'var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', fontWeight: 700 }}>{visit.verificationCode}</span>
+                                  </p>
+                                )}
                               </div>
-                              {progress.photoPath && (
+                              {visit.evidence.photoPath && (
                                 <img 
-                                  src={progress.photoPath} 
-                                  alt="Progress log" 
+                                  src={visit.evidence.photoPath} alt="Final submission" 
                                   style={{ 
-                                    width: '70px', 
-                                    height: '50px', 
-                                    objectFit: 'cover', 
-                                    borderRadius: '4px',
-                                    border: '1px solid var(--border-color)',
-                                    cursor: 'pointer' 
+                                    width: '90px', height: '65px', objectFit: 'cover', borderRadius: '4px',
+                                    border: '1px solid var(--border-color)', cursor: 'pointer' 
                                   }}
-                                  onClick={() => window.open(progress.photoPath, '_blank')}
+                                  onClick={() => window.open(visit.evidence.photoPath, '_blank')}
                                 />
                               )}
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Completed Evidence block */}
-                    {visit.status === 'submitted' && visit.evidence && (
-                      <div style={{ 
-                        marginTop: 'var(--spacing-md)', 
-                        padding: 'var(--spacing-sm)', 
-                        backgroundColor: 'rgba(16, 185, 129, 0.05)', 
-                        border: '1px solid rgba(16, 185, 129, 0.2)', 
-                        borderRadius: 'var(--border-radius-sm)', 
-                        fontSize: '0.85rem' 
-                      }}>
-                        <div style={{ fontWeight: 'bold', color: 'var(--success-color)', marginBottom: 'var(--spacing-xs)', fontSize: '0.8rem' }}>
-                          ✓ Final Completion Evidence
-                        </div>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                          <div style={{ flex: 1 }}>
-                            {visit.evidence.notes && <p style={{ margin: '0 0 6px 0', fontSize: '0.8rem' }}><b>Notes:</b> {visit.evidence.notes}</p>}
-                            {visit.verificationCode && (
-                              <p style={{ margin: 0, fontSize: '0.8rem' }}>
-                                <b>Code:</b> <span style={{ fontFamily: 'monospace', padding: '2px 6px', backgroundColor: 'var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', fontWeight: 700 }}>{visit.verificationCode}</span>
-                              </p>
-                            )}
-                            {visit.distanceToTarget !== undefined && (
-                              <p style={{ margin: '6px 0 0 0', color: 'var(--success-color)', fontSize: '0.8rem' }}>
-                                <b>Validated distance:</b> {visit.distanceToTarget} meters
-                              </p>
-                            )}
                           </div>
-                          {visit.evidence.photoPath && (
-                            <img 
-                              src={visit.evidence.photoPath} 
-                              alt="Final submission" 
-                              style={{ 
-                                width: '90px', 
-                                height: '65px', 
-                                objectFit: 'cover', 
-                                borderRadius: '4px',
-                                border: '1px solid var(--border-color)',
-                                cursor: 'pointer' 
-                              }}
-                              onClick={() => window.open(visit.evidence.photoPath, '_blank')}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    )}
+                        )}
 
-                    {/* Employee Actions */}
-                    {isEmployee && (
-                      <div style={{ marginTop: 'var(--spacing-md)', display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-sm)' }}>
-                        {visit.status === 'pending' && (
-                          <button 
-                            className="btn btn-primary btn-sm" 
-                            onClick={() => handleStartVisit(visit._id)}
-                            disabled={gpsLoading}
-                          >
-                            {gpsLoading ? 'Accessing GPS...' : '🚀 Start Visit (Punch GPS)'}
-                          </button>
-                        )}
-                        {visit.status === 'started' && (
-                          <button className="btn btn-secondary btn-sm" onClick={() => openSubmitModal(visit)}>
-                            🔒 Validate GPS & Submit Evidence
-                          </button>
-                        )}
-                        {visit.status === 'submitted' && (
-                          <div style={{ fontSize: '0.85rem', color: 'var(--success-color)', display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
-                            <span>✓ Evidence Uploaded</span>
-                            {visit.verificationCode && (
-                              <span style={{ fontFamily: 'monospace', padding: '2px 6px', backgroundColor: 'var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', fontWeight: 700 }}>
-                                {visit.verificationCode}
-                              </span>
+                        {/* Employee Actions */}
+                        {isEmployee && (
+                          <div style={{ marginTop: 'var(--spacing-md)', display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-sm)' }}>
+                            {visit.status === 'pending' && (
+                              <button className="btn btn-primary btn-sm" onClick={() => handleStartVisit(visit._id)}>
+                                Start Audit Visit
+                              </button>
+                            )}
+                            {visit.status === 'started' && (
+                              <button className="btn btn-secondary btn-sm" onClick={() => openSubmitModal(visit)}>
+                                Submit Audit Evidence
+                              </button>
+                            )}
+                            {visit.status === 'submitted' && (
+                              <div style={{ fontSize: '0.85rem', color: 'var(--success-color)', display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
+                                <span>✓ Submitted</span>
+                                {visit.verificationCode && (
+                                  <span style={{ fontFamily: 'monospace', padding: '2px 6px', backgroundColor: 'var(--border-color)', color: 'var(--text-main)', borderRadius: '4px', fontWeight: 700 }}>
+                                    {visit.verificationCode}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {filteredVisits.length > 0 && (
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                marginTop: 'var(--spacing-lg)', paddingTop: 'var(--spacing-md)',
+                borderTop: '1px solid var(--border-color)', flexWrap: 'wrap', gap: 'var(--spacing-md)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: '0.9rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Show:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(parseInt(e.target.value));
+                      setCurrentPage(1);
+                      handleClearSelection();
+                    }}
+                    style={{
+                      padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-color)',
+                      backgroundColor: 'var(--card-bg)', color: 'var(--text-main)', cursor: 'pointer'
+                    }}
+                  >
+                    <option value={10}>10 audits</option>
+                    <option value={25}>25 audits</option>
+                    <option value={50}>50 audits</option>
+                    <option value={-1}>All audits</option>
+                  </select>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    Showing {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, filteredVisits.length)} of {filteredVisits.length}
+                  </span>
+                </div>
+
+                {itemsPerPage !== -1 && totalPages > 1 && (
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <button
+                      className="btn btn-outline"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      style={{ padding: '6px 12px', minWidth: 'auto' }}
+                    >
+                      ◀
+                    </button>
+                    {Array.from({ length: totalPages }).map((_, idx) => (
+                      <button
+                        key={idx + 1}
+                        className={currentPage === idx + 1 ? "btn btn-primary" : "btn btn-outline"}
+                        onClick={() => setCurrentPage(idx + 1)}
+                        style={{
+                          padding: '6px 12px', minWidth: '36px', height: '34px', justifyContent: 'center',
+                          backgroundColor: currentPage === idx + 1 ? 'var(--primary-color)' : 'transparent',
+                          color: currentPage === idx + 1 ? '#fff' : 'var(--text-main)',
+                          borderColor: currentPage === idx + 1 ? 'var(--primary-color)' : 'var(--border-color)'
+                        }}
+                      >
+                        {idx + 1}
+                      </button>
+                    ))}
+                    <button
+                      className="btn btn-outline"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      style={{ padding: '6px 12px', minWidth: 'auto' }}
+                    >
+                      ▶
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Column: Manager Form or details */}
+        {/* Right Column: Manager Form */}
         <div>
           {isManager ? (
             <div className="card">
-              <h3 style={{ marginBottom: 'var(--spacing-md)' }}>➕ Schedule On-Site Audit</h3>
+              <h3 style={{ marginBottom: 'var(--spacing-md)' }}>Schedule Field Audit</h3>
               
               {formError && <div className="alert alert-danger">{formError}</div>}
               {formSuccess && <div className="alert alert-success">{formSuccess}</div>}
@@ -537,7 +815,7 @@ export const FieldVisits = () => {
                   <input 
                     type="text" 
                     className="form-input" 
-                    placeholder="e.g. Apex Corp Headquarters"
+                    placeholder="e.g. Acme Corp Headquarters"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
                     required
@@ -545,11 +823,11 @@ export const FieldVisits = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Visit Purpose</label>
+                  <label className="form-label">Audit Purpose / Details</label>
                   <textarea 
                     className="form-input" 
                     rows="2"
-                    placeholder="e.g. Conduct annual hardware installation audit..."
+                    placeholder="Describe audit objectives..."
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value)}
                     required
@@ -557,7 +835,7 @@ export const FieldVisits = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Assign To</label>
+                  <label className="form-label">Assign Auditor / Technician</label>
                   <select 
                     className="form-select"
                     value={assignedTo}
@@ -571,39 +849,41 @@ export const FieldVisits = () => {
                   </select>
                 </div>
 
-                <div style={{ border: '1px solid var(--border-color)', padding: 'var(--spacing-sm)', borderRadius: 'var(--border-radius-sm)', marginBottom: 'var(--spacing-md)' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 'var(--spacing-xs)' }}>🎯 Target Coordinates (Google Maps GPS)</div>
-                  
-                  <div className="form-row">
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Latitude</label>
-                      <input 
-                        type="number" 
-                        step="0.0000001"
-                        className="form-input" 
-                        placeholder="e.g. 12.9716"
-                        value={targetLat}
-                        onChange={(e) => setTargetLat(e.target.value)}
-                        required
-                      />
-                    </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Target Latitude</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="e.g. 12.9716"
+                      value={targetLat}
+                      onChange={(e) => setTargetLat(e.target.value)}
+                      required
+                    />
+                  </div>
 
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label" style={{ fontSize: '0.75rem' }}>Longitude</label>
-                      <input 
-                        type="number" 
-                        step="0.0000001"
-                        className="form-input" 
-                        placeholder="e.g. 77.5946"
-                        value={targetLng}
-                        onChange={(e) => setTargetLng(e.target.value)}
-                        required
-                      />
-                    </div>
+                  <div className="form-group">
+                    <label className="form-label">Target Longitude</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="e.g. 77.5946"
+                      value={targetLng}
+                      onChange={(e) => setTargetLng(e.target.value)}
+                      required
+                    />
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    Tip: Search a location on maps and copy lat/lng coordinates (e.g. Bangalore center: 12.9716 / 77.5946).
-                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Client Phone for Verification Code</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="e.g. +919876543210"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                  />
                 </div>
 
                 <div className="form-group">
@@ -617,66 +897,46 @@ export const FieldVisits = () => {
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Client WhatsApp Number (Optional)</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="e.g. +919876543210"
-                    value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
-                  />
-                </div>
-
                 <button 
                   type="submit" 
                   className="btn btn-primary btn-block"
                   style={{ marginTop: 'var(--spacing-sm)' }}
                   disabled={submittingVisit}
                 >
-                  {submittingVisit ? 'Scheduling...' : 'Assign On-Site Audit'}
+                  {submittingVisit ? 'Scheduling...' : 'Schedule Visit'}
                 </button>
               </form>
             </div>
           ) : (
             <div className="card" style={{ backgroundColor: 'var(--bg-color)' }}>
-              <h3>Geofenced Audit Details</h3>
+              <h3>Audit Workflow Instructions</h3>
               <p className="text-muted" style={{ fontSize: '0.9rem', marginTop: 'var(--spacing-xs)' }}>
-                On-site activity verification implements real-time geofence tracking:
+                Field audits are verified using location and token validation:
               </p>
-              <ul style={{ paddingLeft: 'var(--spacing-md)', fontSize: '0.85rem', marginTop: 'var(--spacing-sm)', display: 'flex', flexDirection: 'column', gap: '8px' }} className="text-muted">
-                <li><b>Audit Initialization:</b> Clicks "Start Audit" to register starting coordinates. This opens the geofence map dashboard.</li>
-                <li><b>Geofence Boundary:</b> You must move within <b>100 meters</b> of the target coordinates defined by the manager.</li>
-                <li><b>Distance Check:</b> The system calculates your current distance using the browser GPS API. Submissions remain locked outside the 100m range.</li>
-                <li><b>Direct Proof:</b> Match the verification shortcode, open device camera, snap image evidence, and upload.</li>
-              </ul>
+              <ol style={{ paddingLeft: 'var(--spacing-md)', fontSize: '0.85rem', marginTop: 'var(--spacing-sm)', display: 'flex', flexDirection: 'column', gap: '8px' }} className="text-muted">
+                <li>Upon arrival, click <b>Start Audit Visit</b> (saves start time & GPS coordinate).</li>
+                <li>Request verification code from the customer. The customer will receive it on WhatsApp.</li>
+                <li>Input the code, snap a live proof photo, and submit. The system validates that you are within 100 meters of the client coordinate.</li>
+              </ol>
             </div>
           )}
         </div>
 
       </div>
 
-      {/* Employee Evidence Submit Modal overlay */}
+      {/* Employee Submission Modal overlay */}
       {activeVisit && (
         <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(17, 24, 39, 0.6)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(17, 24, 39, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
           padding: 'var(--spacing-md)'
         }}>
-          <div className="card" style={{ maxWidth: '500px', width: '100%', maxHeight: '95vh', overflowY: 'auto' }}>
+          <div className="card" style={{ maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)', borderBottom: '1px solid var(--border-color)', paddingBottom: 'var(--spacing-xs)' }}>
-              <h3 style={{ margin: 0 }}>On-Site Audit & Geofence Verification</h3>
+              <h3 style={{ margin: 0 }}>On-Site Audit Submission</h3>
               <button 
-                onClick={closeSubmitModal} 
+                onClick={handleCloseAttempt} 
                 style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
                 ×
@@ -685,44 +945,35 @@ export const FieldVisits = () => {
 
             {modalError && <div className="alert alert-danger">{modalError}</div>}
 
-            {/* Step 1: GPS Geofence Check */}
-            {modalStep === 1 && (
+            {/* Step 1: GPS Check */}
+            {activeVisit.status === 'started' && modalStep === 1 && (
               <div>
                 <p className="text-muted" style={{ marginBottom: 'var(--spacing-md)' }}>
-                  VeriKarya must validate your exact coordinates before unlocking proof upload.
+                  We must verify that your current GPS location is within 100 meters of the scheduled client site.
                 </p>
 
                 {gpsLoading ? (
-                  <div style={{ textAlign: 'center', padding: 'var(--spacing-md)' }}>
-                    <p className="text-muted">Interrogating GPS Satellites...</p>
-                  </div>
+                  <p className="text-muted" style={{ textAlign: 'center', padding: 'var(--spacing-lg)' }}>Acquiring satellite lock...</p>
                 ) : (
                   <div>
                     {gpsCheckPassed ? (
                       <div className="alert alert-success">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', flexShrink: 0 }}><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        <b>Geofence Matched!</b> You are currently within range. Distance to client: <b>{gpsDistance} meters</b>.
+                        <b>Geofence Match!</b> You are within range ({gpsDistance}m).
                       </div>
                     ) : (
                       <div className="alert alert-danger">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px', flexShrink: 0 }}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        <b>Geofence Verification Failed.</b> You are currently <b>{gpsDistance ? `${gpsDistance}m` : 'unknown'}</b> away. You must be within 100 meters to complete.
+                        <b>Geofence Match Failed.</b> You are {gpsDistance || 'unknown'}m away from target.
                       </div>
                     )}
 
-                    {gpsCheckError && <div style={{ fontSize: '0.85rem', color: 'var(--danger-color)', margin: 'var(--spacing-xs) 0' }}>{gpsCheckError}</div>}
-                    
+                    {gpsCheckError && <div style={{ color: 'var(--danger-color)', fontSize: '0.85rem', marginBottom: 'var(--spacing-md)' }}>{gpsCheckError}</div>}
+
                     <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end', marginTop: 'var(--spacing-lg)' }}>
-                      <button className="btn btn-outline" onClick={() => performGpsCheck(activeVisit)} disabled={gpsLoading}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
-                        Refresh GPS Lock
+                      <button className="btn btn-outline" onClick={() => performGpsCheck(activeVisit)}>
+                        Retry GPS Match
                       </button>
-                      <button 
-                        className="btn btn-primary" 
-                        onClick={proceedToGetCode}
-                        disabled={!gpsCheckPassed}
-                      >
-                        Proceed to Code Generation
+                      <button className="btn btn-primary" onClick={proceedToGetCode} disabled={!gpsCheckPassed}>
+                        Proceed to Code
                       </button>
                     </div>
 
@@ -732,10 +983,8 @@ export const FieldVisits = () => {
                           type="button"
                           className="btn btn-outline btn-sm"
                           onClick={handleSetCurrentAsTarget}
-                          disabled={gpsLoading || modalSubmitting}
-                          style={{ borderColor: 'var(--secondary-color)', color: 'var(--secondary-color)', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          style={{ borderColor: 'var(--secondary-color)', color: 'var(--secondary-color)', fontSize: '0.85rem' }}
                         >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
                           Testing Bypass: Set Current GPS as Target
                         </button>
                       </div>
@@ -745,28 +994,28 @@ export const FieldVisits = () => {
               </div>
             )}
 
-            {/* Step 2: Verification Code display */}
-            {modalStep === 2 && (
+            {/* Step 2: Show Code */}
+            {activeVisit.status === 'started' && modalStep === 2 && (
               <div>
                 {codeLoading ? (
-                  <p className="text-muted" style={{ textAlign: 'center', padding: 'var(--spacing-lg)' }}>Generating VK-Code...</p>
+                  <p className="text-muted" style={{ textAlign: 'center', padding: 'var(--spacing-lg)' }}>Generating Secure Code...</p>
                 ) : (
                   <div>
                     <p className="text-muted" style={{ marginBottom: 'var(--spacing-md)' }}>
-                      Below is your unique verification code generated for this client audit. You must submit evidence linking this code.
+                      Please request the code sent to the client's WhatsApp and input it here:
                     </p>
 
-                    <div className="verification-code-container">
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>VERIKARYA SYSTEM CODE</div>
+                    <div className="verification-code-container" style={{ marginBottom: 'var(--spacing-md)' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>CLIENT VERIFICATION CODE</div>
                       <div className="verification-code-text">{verificationCode}</div>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--spacing-lg)' }}>
                       <button className="btn btn-outline" onClick={() => setModalStep(1)}>
-                        Back to GPS Check
+                        Back to GPS
                       </button>
                       <button className="btn btn-primary" onClick={() => setModalStep(3)}>
-                        Proceed to Camera Capture
+                        Proceed to Photo Proof
                       </button>
                     </div>
                   </div>
@@ -774,49 +1023,36 @@ export const FieldVisits = () => {
               </div>
             )}
 
-            {/* Step 3: Camera or Gallery Proof */}
-            {modalStep === 3 && (
+            {/* Step 3: Photo capture */}
+            {activeVisit.status === 'started' && modalStep === 3 && (
               <div>
-                {/* Tab Navigation */}
+                <p className="text-muted" style={{ marginBottom: 'var(--spacing-md)' }}>
+                  Attach a photo of the client site to verify physical presence.
+                </p>
+
                 <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: 'var(--spacing-md)' }}>
                   <button
                     type="button"
                     style={{
-                      flex: 1,
-                      padding: '10px',
-                      border: 'none',
-                      background: 'none',
+                      flex: 1, padding: '10px', border: 'none', background: 'none',
                       borderBottom: proofType === 'gallery' ? '2px solid var(--primary-color)' : 'none',
                       color: proofType === 'gallery' ? 'var(--primary-color)' : 'var(--text-muted)',
-                      fontWeight: proofType === 'gallery' ? 600 : 400,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
+                      fontWeight: proofType === 'gallery' ? 600 : 400, cursor: 'pointer'
                     }}
                     onClick={() => { setProofType('gallery'); setCapturedPhoto(null); }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                     Upload from Gallery
                   </button>
                   <button
                     type="button"
                     style={{
-                      flex: 1,
-                      padding: '10px',
-                      border: 'none',
-                      background: 'none',
+                      flex: 1, padding: '10px', border: 'none', background: 'none',
                       borderBottom: proofType === 'camera' ? '2px solid var(--primary-color)' : 'none',
                       color: proofType === 'camera' ? 'var(--primary-color)' : 'var(--text-muted)',
-                      fontWeight: proofType === 'camera' ? 600 : 400,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
+                      fontWeight: proofType === 'camera' ? 600 : 400, cursor: 'pointer'
                     }}
                     onClick={() => { setProofType('camera'); setCapturedPhoto(null); }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
                     Take Live Photo
                   </button>
                 </div>
@@ -827,48 +1063,30 @@ export const FieldVisits = () => {
                       <div style={{ textAlign: 'center' }}>
                         <img src={capturedPhoto} alt="Gallery upload preview" style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)' }} />
                         <div style={{ marginTop: 'var(--spacing-md)' }}>
-                          <button
-                            type="button"
-                            className="btn btn-outline"
-                            onClick={() => setCapturedPhoto(null)}
-                          >
+                          <button type="button" className="btn btn-outline" onClick={() => setCapturedPhoto(null)}>
                             🔄 Clear / Replace
                           </button>
                         </div>
                       </div>
                     ) : (
                       <label className="file-upload-zone">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary-color)', marginBottom: 'var(--spacing-sm)' }}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                         <span style={{ fontWeight: 600 }}>Click to select/upload image</span>
-                        <span className="text-muted" style={{ fontSize: '0.85rem', marginTop: '4px' }}>PNG, JPG, JPEG up to 10MB</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="file-upload-input"
-                          onChange={handleFileChange}
-                        />
+                        <input type="file" accept="image/*" className="file-upload-input" onChange={handleFileChange} />
                       </label>
                     )}
                   </div>
                 ) : (
                   <CameraCapture 
-                    onCapture={(photoData) => {
-                      setCapturedPhoto(photoData);
-                      setModalError('');
-                    }}
+                    onCapture={(photoData) => { setCapturedPhoto(photoData); setModalError(''); }}
                     onClear={() => setCapturedPhoto(null)}
                   />
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--spacing-lg)' }}>
                   <button className="btn btn-outline" onClick={() => setModalStep(2)}>
-                    Back to Code
+                    Back
                   </button>
-                  <button 
-                    className="btn btn-primary" 
-                    onClick={() => setModalStep(4)}
-                    disabled={!capturedPhoto}
-                  >
+                  <button className="btn btn-primary" onClick={() => setModalStep(4)} disabled={!capturedPhoto}>
                     Next: Notes
                   </button>
                 </div>
@@ -885,14 +1103,9 @@ export const FieldVisits = () => {
                 {/* Previous Progress Updates Timeline */}
                 {activeVisit.progressHistory && activeVisit.progressHistory.length > 0 && (
                   <div style={{ 
-                    marginBottom: 'var(--spacing-md)', 
-                    maxHeight: '180px', 
-                    overflowY: 'auto', 
-                    padding: 'var(--spacing-sm)', 
-                    backgroundColor: 'var(--bg-color)', 
-                    borderRadius: 'var(--border-radius-sm)',
-                    border: '1px solid var(--border-color)',
-                    fontSize: '0.85rem'
+                    marginBottom: 'var(--spacing-md)', maxHeight: '180px', overflowY: 'auto', 
+                    padding: 'var(--spacing-sm)', backgroundColor: 'var(--bg-color)', 
+                    borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.85rem'
                   }}>
                     <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-main)' }}>
                       Previous Days' Submissions ({activeVisit.progressHistory.length})
@@ -900,12 +1113,8 @@ export const FieldVisits = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {activeVisit.progressHistory.map((progress, idx) => (
                         <div key={idx} style={{ 
-                          borderLeft: '2px solid var(--primary-color)', 
-                          paddingLeft: '8px', 
-                          paddingVertical: '2px',
-                          display: 'flex',
-                          gap: '10px',
-                          alignItems: 'flex-start'
+                          borderLeft: '2px solid var(--primary-color)', paddingLeft: '8px', 
+                          display: 'flex', gap: '10px', alignItems: 'flex-start'
                         }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '2px' }}>
@@ -916,15 +1125,10 @@ export const FieldVisits = () => {
                           </div>
                           {progress.photoPath && (
                             <img 
-                              src={progress.photoPath} 
-                              alt="Progress log" 
+                              src={progress.photoPath} alt="Progress log" 
                               style={{ 
-                                width: '60px', 
-                                height: '45px', 
-                                objectFit: 'cover', 
-                                borderRadius: '4px',
-                                border: '1px solid var(--border-color)',
-                                cursor: 'pointer' 
+                                width: '60px', height: '45px', objectFit: 'cover', borderRadius: '4px',
+                                border: '1px solid var(--border-color)', cursor: 'pointer' 
                               }}
                               onClick={() => window.open(progress.photoPath, '_blank')}
                             />
@@ -947,14 +1151,8 @@ export const FieldVisits = () => {
                 </div>
 
                 <div style={{ 
-                  backgroundColor: 'var(--bg-color)', 
-                  padding: 'var(--spacing-sm)', 
-                  borderRadius: 'var(--border-radius-sm)', 
-                  fontSize: '0.85rem',
-                  marginBottom: 'var(--spacing-md)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px'
+                  backgroundColor: 'var(--bg-color)', padding: 'var(--spacing-sm)', borderRadius: 'var(--border-radius-sm)', 
+                  fontSize: '0.85rem', marginBottom: 'var(--spacing-md)', display: 'flex', flexDirection: 'column', gap: '4px'
                 }} className="text-muted">
                   <div><b>Verified Geofence Distance: </b> {gpsDistance} meters</div>
                   <div><b>Matched Code:</b> {verificationCode}</div>
@@ -983,10 +1181,123 @@ export const FieldVisits = () => {
                 </div>
               </div>
             )}
-
           </div>
         </div>
       )}
+
+      {/* Discard progress warning modal */}
+      {showDiscardConfirm && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div className="card" style={{
+            width: '100%', maxWidth: '400px', backgroundColor: 'var(--card-bg)',
+            borderColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid var(--border-color)',
+            borderRadius: '12px', padding: 'var(--spacing-lg)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
+              <div style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)',
+                width: '40px', height: '40px', borderRadius: '50%', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                Discard Progress?
+              </h3>
+            </div>
+            
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: 'var(--spacing-lg)' }}>
+              Are you sure you want to discard your field audit completion progress? Any attached photo or verification details will be lost.
+            </p>
+
+            <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-outline" onClick={() => setShowDiscardConfirm(false)}>
+                Go Back
+              </button>
+              <button 
+                type="button" className="btn btn-danger" 
+                onClick={() => {
+                  closeSubmitModal();
+                  setShowDiscardConfirm(false);
+                }}
+                style={{ backgroundColor: 'var(--danger-color)', color: '#fff' }}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div className="card" style={{
+            width: '100%', maxWidth: '400px', backgroundColor: 'var(--card-bg)',
+            borderColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid var(--border-color)',
+            borderRadius: '12px', padding: 'var(--spacing-lg)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
+              <div style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)',
+                width: '40px', height: '40px', borderRadius: '50%', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                Confirm Deletion
+              </h3>
+            </div>
+            
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: 'var(--spacing-lg)' }}>
+              {deleteMode === 'single' ? (
+                <>Are you sure you want to delete the audit visit for <strong style={{ color: 'var(--text-main)' }}>{visitToDelete?.clientName}</strong>? This will permanently remove it from the tracker.</>
+              ) : (
+                <>Are you sure you want to delete <strong style={{ color: 'var(--text-main)' }}>{selectedVisits.length}</strong> selected audits? This action cannot be undone.</>
+              )}
+            </p>
+
+            <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end' }}>
+              <button 
+                type="button" className="btn btn-outline" 
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setVisitToDelete(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" className="btn btn-danger" 
+                onClick={async () => {
+                  if (deleteMode === 'single') {
+                    await executeSingleDelete(visitToDelete?._id);
+                  } else {
+                    await executeBulkDelete();
+                  }
+                  setShowDeleteConfirm(false);
+                  setVisitToDelete(null);
+                }}
+                style={{ backgroundColor: 'var(--danger-color)', color: '#fff' }}
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </DashboardLayout>
   );
 };

@@ -451,6 +451,52 @@ const saveVisitProgress = async (req, res) => {
   }
 };
 
+const deleteVisit = async (req, res) => {
+  try {
+    const visit = await Visit.findById(req.params.id);
+    if (!visit) {
+      return res.status(404).json({ success: false, error: 'Visit not found' });
+    }
+
+    // Clean up dependent resources
+    await VerificationCode.deleteMany({ referenceId: visit._id });
+    await Review.deleteMany({ referenceId: visit._id });
+    await Evidence.deleteMany({ referenceId: visit._id });
+
+    await visit.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Field visit deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const bulkDeleteVisits = async (req, res) => {
+  try {
+    const { visitIds } = req.body;
+    if (!visitIds || !Array.isArray(visitIds) || visitIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'Please provide an array of visit IDs to delete' });
+    }
+
+    // Clean up dependent resources
+    await VerificationCode.deleteMany({ referenceId: { $in: visitIds } });
+    await Review.deleteMany({ referenceId: { $in: visitIds } });
+    await Evidence.deleteMany({ referenceId: { $in: visitIds } });
+
+    await Visit.deleteMany({ _id: { $in: visitIds } });
+
+    res.status(200).json({
+      success: true,
+      message: `${visitIds.length} visits deleted successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   createVisit,
   getVisits,
@@ -459,6 +505,8 @@ module.exports = {
   requestVisitCode,
   submitVisitEvidence,
   bypassVisitLocation,
-  saveVisitProgress
+  saveVisitProgress,
+  deleteVisit,
+  bulkDeleteVisits
 };
 

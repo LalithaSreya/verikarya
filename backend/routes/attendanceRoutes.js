@@ -4,9 +4,11 @@ const {
   checkIn,
   checkOut,
   getTodayStatus,
-  getAttendanceHistory
+  getAttendanceHistory,
+  deleteAttendance,
+  bulkDeleteAttendance
 } = require('../controllers/attendanceController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -17,5 +19,7 @@ router.post('/checkin', checkIn);
 router.post('/checkout', checkOut);
 router.get('/today', getTodayStatus);
 router.get('/history', getAttendanceHistory);
+router.delete('/:id', authorize('manager'), deleteAttendance);
+router.delete('/', authorize('manager'), bulkDeleteAttendance);
 
 module.exports = router;

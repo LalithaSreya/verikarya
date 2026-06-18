@@ -6,7 +6,9 @@ const {
   updateTaskStatus,
   requestTaskCode,
   submitTaskEvidence,
-  saveTaskProgress
+  saveTaskProgress,
+  deleteTask,
+  bulkDeleteTasks
 } = require('../controllers/taskController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -16,7 +18,9 @@ router.use(protect); // All routes protected
 
 router.post('/', authorize('manager'), createTask);
 router.get('/', getTasks);
+router.delete('/', authorize('manager'), bulkDeleteTasks);
 router.get('/:id', getTaskById);
+router.delete('/:id', authorize('manager'), deleteTask);
 router.put('/:id/status', authorize('employee'), updateTaskStatus);
 router.post('/:id/request-code', authorize('employee'), requestTaskCode);
 router.post('/:id/progress', authorize('employee'), saveTaskProgress);

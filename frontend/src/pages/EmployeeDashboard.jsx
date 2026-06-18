@@ -27,6 +27,7 @@ export const EmployeeDashboard = () => {
   const [capturedPhoto, setCapturedPhoto] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState('');
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   // Fetch all dashboard data
   const fetchDashboardData = async () => {
@@ -158,6 +159,16 @@ export const EmployeeDashboard = () => {
     setVerificationCode('');
     setCapturedPhoto(null);
     setModalError('');
+    setGpsCheckPassed(false);
+  };
+
+  const handleCloseAttempt = () => {
+    const hasProgress = capturedPhoto || verificationCode || gpsCheckPassed;
+    if (hasProgress) {
+      setShowDiscardConfirm(true);
+    } else {
+      closePunchModal();
+    }
   };
 
   // Submit verified Punch In/Out
@@ -442,7 +453,7 @@ export const EmployeeDashboard = () => {
                 🔐 {punchType === 'checkin' ? 'Clock-In Verification' : 'Clock-Out Verification'}
               </h3>
               <button 
-                onClick={closePunchModal} 
+                onClick={handleCloseAttempt} 
                 style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
                 ×
@@ -571,6 +582,60 @@ export const EmployeeDashboard = () => {
               </div>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* Discard Progress warning modal */}
+      {showDiscardConfirm && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div className="card" style={{
+            width: '100%', maxWidth: '400px', backgroundColor: 'var(--card-bg)',
+            borderColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid var(--border-color)',
+            borderRadius: '12px', padding: 'var(--spacing-lg)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
+              <div style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)',
+                width: '40px', height: '40px', borderRadius: '50%', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                Discard Progress?
+              </h3>
+            </div>
+            
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: 'var(--spacing-lg)' }}>
+              Are you sure you want to discard your clock-in/out verification progress? Any captured photo or check-in details will be lost.
+            </p>
+
+            <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end' }}>
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                onClick={() => setShowDiscardConfirm(false)}
+              >
+                Go Back
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-danger" 
+                onClick={() => {
+                  closePunchModal();
+                  setShowDiscardConfirm(false);
+                }}
+                style={{ backgroundColor: 'var(--danger-color)', color: '#fff' }}
+              >
+                Discard
+              </button>
+            </div>
           </div>
         </div>
       )}

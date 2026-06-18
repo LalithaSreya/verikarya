@@ -136,8 +136,46 @@ const getFeedbackDetails = async (req, res) => {
   }
 };
 
+const deleteFeedback = async (req, res) => {
+  try {
+    const feedback = await Feedback.findById(req.params.id);
+    if (!feedback) {
+      return res.status(404).json({ success: false, error: 'Feedback record not found' });
+    }
+
+    await feedback.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Feedback deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const bulkDeleteFeedback = async (req, res) => {
+  try {
+    const { feedbackIds } = req.body;
+    if (!feedbackIds || !Array.isArray(feedbackIds) || feedbackIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'Please provide an array of feedback IDs to delete' });
+    }
+
+    await Feedback.deleteMany({ _id: { $in: feedbackIds } });
+
+    res.status(200).json({
+      success: true,
+      message: `${feedbackIds.length} feedback logs deleted successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   submitFeedback,
   getFeedbackLogs,
-  getFeedbackDetails
+  getFeedbackDetails,
+  deleteFeedback,
+  bulkDeleteFeedback
 };

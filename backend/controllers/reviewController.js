@@ -206,9 +206,97 @@ const getWhatsAppLogs = async (req, res) => {
   }
 };
 
+const deleteReview = async (req, res) => {
+  try {
+    const review = await Review.findById(req.params.id);
+    if (!review) {
+      return res.status(404).json({ success: false, error: 'Review record not found' });
+    }
+
+    await review.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Review record deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const bulkDeleteReviews = async (req, res) => {
+  try {
+    const { reviewIds } = req.body;
+    if (!reviewIds || !Array.isArray(reviewIds) || reviewIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'Please provide an array of review IDs to delete' });
+    }
+
+    await Review.deleteMany({ _id: { $in: reviewIds } });
+
+    res.status(200).json({
+      success: true,
+      message: `${reviewIds.length} review records deleted successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const deleteWhatsAppLog = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.connection.readyState || mongoose.connection.readyState !== 1) {
+      return res.status(500).json({ success: false, error: 'Database not connected' });
+    }
+    const result = await mongoose.connection.db
+      .collection('whatsapp_logs')
+      .deleteOne({ _id: new mongoose.Types.ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ success: false, error: 'WhatsApp log not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'WhatsApp log deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const bulkDeleteWhatsAppLogs = async (req, res) => {
+  try {
+    const { logIds } = req.body;
+    if (!logIds || !Array.isArray(logIds) || logIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'Please provide an array of WhatsApp log IDs to delete' });
+    }
+
+    if (!mongoose.connection.readyState || mongoose.connection.readyState !== 1) {
+      return res.status(500).json({ success: false, error: 'Database not connected' });
+    }
+
+    const objectIds = logIds.map(id => new mongoose.Types.ObjectId(id));
+    await mongoose.connection.db
+      .collection('whatsapp_logs')
+      .deleteMany({ _id: { $in: objectIds } });
+
+    res.status(200).json({
+      success: true,
+      message: `${logIds.length} WhatsApp logs deleted successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   getReviews,
   submitReview,
   getAnalytics,
-  getWhatsAppLogs
+  getWhatsAppLogs,
+  deleteReview,
+  bulkDeleteReviews,
+  deleteWhatsAppLog,
+  bulkDeleteWhatsAppLogs
 };

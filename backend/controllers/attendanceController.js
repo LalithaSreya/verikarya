@@ -273,10 +273,54 @@ const getAttendanceHistory = async (req, res) => {
   }
 };
 
+const deleteAttendance = async (req, res) => {
+  try {
+    const attendance = await Attendance.findById(req.params.id);
+    if (!attendance) {
+      return res.status(404).json({ success: false, error: 'Attendance record not found' });
+    }
+
+    // Clean up dependent resources (reviews)
+    await Review.deleteMany({ referenceId: attendance._id });
+
+    await attendance.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Attendance record deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const bulkDeleteAttendance = async (req, res) => {
+  try {
+    const { attendanceIds } = req.body;
+    if (!attendanceIds || !Array.isArray(attendanceIds) || attendanceIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'Please provide an array of attendance IDs to delete' });
+    }
+
+    // Clean up dependent resources
+    await Review.deleteMany({ referenceId: { $in: attendanceIds } });
+
+    await Attendance.deleteMany({ _id: { $in: attendanceIds } });
+
+    res.status(200).json({
+      success: true,
+      message: `${attendanceIds.length} attendance records deleted successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   requestAttendanceCode,
   checkIn,
   checkOut,
   getTodayStatus,
-  getAttendanceHistory
+  getAttendanceHistory,
+  deleteAttendance,
+  bulkDeleteAttendance
 };

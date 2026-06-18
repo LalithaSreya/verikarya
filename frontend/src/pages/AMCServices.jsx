@@ -14,6 +14,20 @@ export const AMCServices = () => {
   const [showVisitModal, setShowVisitModal] = useState(false);
   const [currentSub, setCurrentSub] = useState(null);
 
+  // Search, pagination & selection state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
+  const [isGlobalSelected, setIsGlobalSelected] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteMode, setDeleteMode] = useState('single'); // 'single' | 'bulk'
+  const [amcToDelete, setAmcToDelete] = useState(null);
+
+  useEffect(() => {
+    setLastSelectedIndex(null);
+  }, [currentPage]);
+
   // New AMC form state
   const [newAMC, setNewAMC] = useState({
     clientName: '',
@@ -129,14 +143,70 @@ export const AMCServices = () => {
     }
   };
 
-  const handleDeleteAMC = async (id) => {
-    if (!window.confirm('Are you sure you want to cancel this AMC subscription?')) return;
+  // Selection handlers
+  const handleClearSelection = () => {
+    setSelectedAMCs([]);
+    setIsGlobalSelected(false);
+    setLastSelectedIndex(null);
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      const pageAmcIds = paginatedAMCs.map(sub => sub._id);
+      const newSelected = Array.from(new Set([...selectedAMCs, ...pageAmcIds]));
+      setSelectedAMCs(newSelected);
+    } else {
+      const pageAmcIds = paginatedAMCs.map(sub => sub._id);
+      setSelectedAMCs(selectedAMCs.filter(id => !pageAmcIds.includes(id)));
+      setIsGlobalSelected(false);
+    }
+  };
+
+  const handleSelectAMC = (e, id, index) => {
+    const isChecked = e.target.checked;
+    
+    if (e.nativeEvent.shiftKey && lastSelectedIndex !== null) {
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      const rangeIds = paginatedAMCs.slice(start, end + 1).map(sub => sub._id);
+      
+      if (isChecked) {
+        setSelectedAMCs(prev => Array.from(new Set([...prev, ...rangeIds])));
+      } else {
+        setSelectedAMCs(prev => prev.filter(item => !rangeIds.includes(item)));
+        setIsGlobalSelected(false);
+      }
+    } else {
+      if (isChecked) {
+        setSelectedAMCs(prev => [...prev, id]);
+      } else {
+        setSelectedAMCs(prev => prev.filter(item => item !== id));
+        setIsGlobalSelected(false);
+      }
+    }
+    setLastSelectedIndex(index);
+  };
+
+  // Delete actions (Trigger Modal warning confirmation instead of native window.confirm)
+  const handleDeleteClick = (sub) => {
+    setAmcToDelete(sub);
+    setDeleteMode('single');
+    setShowDeleteConfirm(true);
+  };
+
+  const handleBulkDeleteClick = () => {
+    setDeleteMode('bulk');
+    setShowDeleteConfirm(true);
+  };
+
+  const executeSingleDelete = async (id) => {
     try {
       setError('');
       setSuccessMsg('');
       const res = await api.delete(`/subscriptions/${id}`);
       if (res.data.success) {
         setSuccessMsg('Subscription removed successfully');
+        handleClearSelection();
         fetchSubscriptions();
       }
     } catch (err) {
@@ -144,39 +214,40 @@ export const AMCServices = () => {
     }
   };
 
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      const visibleIds = subscriptions.map(sub => sub._id);
-      setSelectedAMCs(visibleIds);
-    } else {
-      setSelectedAMCs([]);
-    }
-  };
-
-  const handleSelectAMC = (id) => {
-    if (selectedAMCs.includes(id)) {
-      setSelectedAMCs(selectedAMCs.filter(item => item !== id));
-    } else {
-      setSelectedAMCs([...selectedAMCs, id]);
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedAMCs.length === 0) return;
-    if (!window.confirm(`Are you sure you want to cancel the ${selectedAMCs.length} selected AMC subscriptions?`)) return;
-
+  const executeBulkDelete = async () => {
     try {
       setError('');
       setSuccessMsg('');
       const res = await api.delete('/subscriptions', { data: { subscriptionIds: selectedAMCs } });
       if (res.data.success) {
         setSuccessMsg(res.data.message || 'Subscriptions deleted successfully');
+        handleClearSelection();
         fetchSubscriptions();
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to cancel selected AMC subscriptions');
     }
   };
+
+  // Filtering & Pagination
+  const filteredAMCs = subscriptions.filter(sub => {
+    const query = searchTerm.toLowerCase();
+    return (
+      sub.clientName.toLowerCase().includes(query) ||
+      sub.clientPhone.toLowerCase().includes(query) ||
+      sub.plan.toLowerCase().includes(query) ||
+      sub.status.toLowerCase().includes(query)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredAMCs.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const paginatedAMCs = itemsPerPage === -1
+    ? filteredAMCs
+    : filteredAMCs.slice(indexOfFirstItem, indexOfLastItem);
+
+  const allPageSelected = paginatedAMCs.length > 0 && paginatedAMCs.every(sub => selectedAMCs.includes(sub._id));
 
   // Stats calculation
   const totalAMCs = subscriptions.length;
@@ -200,7 +271,7 @@ export const AMCServices = () => {
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Subscription-Based AMC Contracts</h1>
           <p className="text-muted">Manage annual maintenance services, plan tiers, and auto-renewals.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+        <button className="btn btn-primary" onClick={() => setShowAddModal(true)} style={{ display: 'inline-flex', alignItems: 'center' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           Register New AMC
         </button>
@@ -257,7 +328,41 @@ export const AMCServices = () => {
         </div>
       )}
 
-      {/* Subscription Table */}
+      {/* Search filtering card */}
+      <div className="card" style={{ marginBottom: 'var(--spacing-lg)' }}>
+        <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'center', position: 'relative' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input 
+            type="text" 
+            placeholder="Search AMC contracts by client name, plan or status..." 
+            className="form-input"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+              handleClearSelection();
+            }}
+            style={{ flex: 1, paddingRight: searchTerm ? '32px' : '12px' }}
+          />
+          {searchTerm && (
+            <button 
+              onClick={() => {
+                setSearchTerm('');
+                setCurrentPage(1);
+                handleClearSelection();
+              }}
+              style={{
+                position: 'absolute', right: '12px', background: 'none', border: 'none',
+                cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', display: 'flex',
+                alignItems: 'center', justifyContent: 'center'
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
+
       {loading ? (
         <div className="text-center" style={{ padding: 'var(--spacing-xl)' }}>Loading subscriptions...</div>
       ) : (
@@ -273,13 +378,49 @@ export const AMCServices = () => {
               padding: '10px 16px',
               animation: 'fadeIn 0.2s ease-out'
             }}>
-              <div style={{ fontWeight: 600, color: 'var(--primary-color)', fontSize: '0.95rem' }}>
-                Selected {selectedAMCs.length} contract{selectedAMCs.length > 1 ? 's' : ''}
+              <div style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>
+                Selected <strong style={{ color: 'var(--primary-color)' }}>{selectedAMCs.length}</strong> contract{selectedAMCs.length > 1 ? 's' : ''}.
+                {allPageSelected && filteredAMCs.length > paginatedAMCs.length && !isGlobalSelected && (
+                  <span style={{ marginLeft: '12px' }}>
+                    All {paginatedAMCs.length} records on this page are selected.{' '}
+                    <button 
+                      onClick={() => {
+                        setSelectedAMCs(filteredAMCs.map(sub => sub._id));
+                        setIsGlobalSelected(true);
+                      }}
+                      style={{
+                        background: 'none', border: 'none', color: 'var(--primary-color)',
+                        textDecoration: 'underline', fontWeight: 700, cursor: 'pointer', padding: 0
+                      }}
+                    >
+                      Select all {filteredAMCs.length} records matching search
+                    </button>
+                  </span>
+                )}
+                {isGlobalSelected && (
+                  <span style={{ marginLeft: '12px', color: 'var(--text-muted)' }}>
+                    All {filteredAMCs.length} matching records are selected.{' '}
+                    <button 
+                      onClick={handleClearSelection}
+                      style={{
+                        background: 'none', border: 'none', color: 'var(--primary-color)',
+                        textDecoration: 'underline', fontWeight: 700, cursor: 'pointer', padding: 0
+                      }}
+                    >
+                      Clear selection
+                    </button>
+                  </span>
+                )}
               </div>
-              <button className="btn btn-danger" onClick={handleBulkDelete} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                Cancel Selected
-              </button>
+              <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+                <button className="btn btn-outline" onClick={handleClearSelection} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
+                  Clear Selection
+                </button>
+                <button className="btn btn-danger" onClick={handleBulkDeleteClick} style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  Cancel Selected
+                </button>
+              </div>
             </div>
           )}
 
@@ -290,7 +431,7 @@ export const AMCServices = () => {
                   <th style={{ width: '40px', paddingLeft: 'var(--spacing-md)' }}>
                     <input 
                       type="checkbox" 
-                      checked={subscriptions.length > 0 && selectedAMCs.length === subscriptions.length} 
+                      checked={paginatedAMCs.length > 0 && paginatedAMCs.every(sub => selectedAMCs.includes(sub._id))} 
                       onChange={handleSelectAll} 
                       style={{ cursor: 'pointer', transform: 'scale(1.1)' }} 
                     />
@@ -306,14 +447,14 @@ export const AMCServices = () => {
                 </tr>
               </thead>
               <tbody>
-                {subscriptions.length === 0 ? (
+                {paginatedAMCs.length === 0 ? (
                   <tr>
                     <td colSpan="9" className="text-center" style={{ color: 'var(--text-muted)' }}>
-                      No AMC subscriptions registered yet. Click "Register New AMC" to begin.
+                      No AMC subscriptions match query.
                     </td>
                   </tr>
                 ) : (
-                  subscriptions.map(sub => {
+                  paginatedAMCs.map((sub, index) => {
                     const isExpiring = new Date(sub.endDate) - new Date() <= (30 * 24 * 60 * 60 * 1000);
                     const isExpired = new Date(sub.endDate) < new Date();
                     
@@ -326,7 +467,7 @@ export const AMCServices = () => {
                           <input 
                             type="checkbox" 
                             checked={selectedAMCs.includes(sub._id)} 
-                            onChange={() => handleSelectAMC(sub._id)} 
+                            onChange={(e) => handleSelectAMC(e, sub._id, index)} 
                             style={{ cursor: 'pointer', transform: 'scale(1.1)' }} 
                           />
                         </td>
@@ -354,7 +495,7 @@ export const AMCServices = () => {
                             {(sub.plan === 'Standard' || sub.plan === 'Premium') && (
                               <button 
                                 className="btn btn-success" 
-                                style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                                style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center' }}
                                 onClick={() => handleOpenVisitModal(sub)}
                                 disabled={isExpired}
                               >
@@ -364,9 +505,10 @@ export const AMCServices = () => {
                             )}
                             <button 
                               className="btn btn-danger" 
-                              style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
-                              onClick={() => handleDeleteAMC(sub._id)}
+                              style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center' }}
+                              onClick={() => handleDeleteClick(sub)}
                             >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px' }}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                               Cancel
                             </button>
                           </div>
@@ -378,6 +520,75 @@ export const AMCServices = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {filteredAMCs.length > 0 && (
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginTop: 'var(--spacing-md)', padding: 'var(--spacing-md) 0',
+              borderTop: '1px solid var(--border-color)', flexWrap: 'wrap', gap: 'var(--spacing-md)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: '0.9rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Show:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(parseInt(e.target.value));
+                    setCurrentPage(1);
+                    handleClearSelection();
+                  }}
+                  style={{
+                    padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--card-bg)', color: 'var(--text-main)', cursor: 'pointer'
+                  }}
+                >
+                  <option value={10}>10 records</option>
+                  <option value={25}>25 records</option>
+                  <option value={50}>50 records</option>
+                  <option value={-1}>All records</option>
+                </select>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  Showing {indexOfFirstItem + 1} - {Math.min(indexOfLastItem, filteredAMCs.length)} of {filteredAMCs.length} contracts
+                </span>
+              </div>
+
+              {itemsPerPage !== -1 && totalPages > 1 && (
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    style={{ padding: '6px 12px', minWidth: 'auto' }}
+                  >
+                    ◀
+                  </button>
+                  {Array.from({ length: totalPages }).map((_, index) => (
+                    <button
+                      key={index + 1}
+                      onClick={() => setCurrentPage(index + 1)}
+                      className={currentPage === index + 1 ? "btn btn-primary" : "btn btn-outline"}
+                      style={{
+                        padding: '6px 12px', minWidth: '36px', height: '34px', justifyContent: 'center',
+                        backgroundColor: currentPage === index + 1 ? 'var(--primary-color)' : 'transparent',
+                        color: currentPage === index + 1 ? '#fff' : 'var(--text-main)',
+                        borderColor: currentPage === index + 1 ? 'var(--primary-color)' : 'var(--border-color)'
+                      }}
+                    >
+                      {index + 1}
+                    </button>
+                  ))}
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    style={{ padding: '6px 12px', minWidth: 'auto' }}
+                  >
+                    ▶
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -401,19 +612,17 @@ export const AMCServices = () => {
                   required
                 />
               </div>
-
               <div className="form-group">
-                <label className="form-label">Client Phone Number</label>
+                <label className="form-label">Client Phone (WhatsApp)</label>
                 <input 
                   type="text" 
                   className="form-input" 
-                  placeholder="+91 XXXXXXXXXX"
                   value={newAMC.clientPhone}
                   onChange={(e) => setNewAMC({ ...newAMC, clientPhone: e.target.value })}
+                  placeholder="e.g. +919876543210"
                   required
                 />
               </div>
-
               <div className="form-group">
                 <label className="form-label">Plan Tier</label>
                 <select 
@@ -421,12 +630,11 @@ export const AMCServices = () => {
                   value={newAMC.plan}
                   onChange={(e) => setNewAMC({ ...newAMC, plan: e.target.value })}
                 >
-                  <option value="Basic">Basic (Standard SLAs, No priority support)</option>
-                  <option value="Standard">Standard (Includes Preventive Site Visits)</option>
-                  <option value="Premium">Premium (Preventive Visits + Priority Support)</option>
+                  <option value="Basic">Basic</option>
+                  <option value="Standard">Standard</option>
+                  <option value="Premium">Premium</option>
                 </select>
               </div>
-
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Start Date</label>
@@ -449,14 +657,9 @@ export const AMCServices = () => {
                   />
                 </div>
               </div>
-
-              <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end', marginTop: 'var(--spacing-md)' }}>
-                <button type="button" className="btn btn-outline" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Create Subscription
-                </button>
+              <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end', marginTop: 'var(--spacing-lg)' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Register AMC</button>
               </div>
             </form>
           </div>
@@ -470,14 +673,14 @@ export const AMCServices = () => {
           backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
         }}>
           <div className="card" style={{ width: '100%', maxWidth: '500px', backgroundColor: 'var(--card-bg)' }}>
-            <h3 style={{ marginBottom: 'var(--spacing-md)' }}>Schedule Preventive Site Visit</h3>
+            <h3 style={{ marginBottom: 'var(--spacing-md)' }}>Schedule Preventive Inspection</h3>
             <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: 'var(--spacing-md)' }}>
-              Assigning preventive technician to client: <strong>{currentSub?.clientName}</strong> ({currentSub?.plan} Plan)
+              Automatically links to contract client: <b>{currentSub?.clientName}</b>
             </p>
             
             <form onSubmit={handleCreateVisit}>
               <div className="form-group">
-                <label className="form-label">Visit Purpose</label>
+                <label className="form-label">Inspection Purpose</label>
                 <input 
                   type="text" 
                   className="form-input" 
@@ -486,7 +689,6 @@ export const AMCServices = () => {
                   required
                 />
               </div>
-
               <div className="form-group">
                 <label className="form-label">Assign Technician</label>
                 <select 
@@ -497,62 +699,113 @@ export const AMCServices = () => {
                 >
                   <option value="">-- Select Technician --</option>
                   {employees.map(emp => (
-                    <option key={emp._id} value={emp._id}>{emp.name} ({emp.email})</option>
+                    <option key={emp._id} value={emp._id}>{emp.name}</option>
                   ))}
                 </select>
               </div>
-
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Latitude</label>
+                  <input 
+                    type="number" 
+                    step="any"
+                    className="form-input" 
+                    value={visitForm.targetLocation.lat}
+                    onChange={(e) => setVisitForm({ ...visitForm, targetLocation: { ...visitForm.targetLocation, lat: parseFloat(e.target.value) } })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Longitude</label>
+                  <input 
+                    type="number" 
+                    step="any"
+                    className="form-input" 
+                    value={visitForm.targetLocation.lng}
+                    onChange={(e) => setVisitForm({ ...visitForm, targetLocation: { ...visitForm.targetLocation, lng: parseFloat(e.target.value) } })}
+                    required
+                  />
+                </div>
+              </div>
               <div className="form-group">
-                <label className="form-label">Scheduled Date / Deadline</label>
+                <label className="form-label">Deadline</label>
                 <input 
-                  type="datetime-local" 
+                  type="date" 
                   className="form-input" 
                   value={visitForm.deadline}
                   onChange={(e) => setVisitForm({ ...visitForm, deadline: e.target.value })}
                   required
                 />
               </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Target Lat</label>
-                  <input 
-                    type="number" 
-                    step="0.0000001" 
-                    className="form-input"
-                    value={visitForm.targetLocation.lat}
-                    onChange={(e) => setVisitForm({ 
-                      ...visitForm, 
-                      targetLocation: { ...visitForm.targetLocation, lat: parseFloat(e.target.value) } 
-                    })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Target Lng</label>
-                  <input 
-                    type="number" 
-                    step="0.0000001" 
-                    className="form-input"
-                    value={visitForm.targetLocation.lng}
-                    onChange={(e) => setVisitForm({ 
-                      ...visitForm, 
-                      targetLocation: { ...visitForm.targetLocation, lng: parseFloat(e.target.value) } 
-                    })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end', marginTop: 'var(--spacing-md)' }}>
-                <button type="button" className="btn btn-outline" onClick={() => setShowVisitModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-success">
-                  Confirm Schedule
-                </button>
+              <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end', marginTop: 'var(--spacing-lg)' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setShowVisitModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Schedule Visit</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div className="card" style={{
+            width: '100%', maxWidth: '400px', backgroundColor: 'var(--card-bg)',
+            borderColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid var(--border-color)',
+            borderRadius: '12px', padding: 'var(--spacing-lg)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
+              <div style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)',
+                width: '40px', height: '40px', borderRadius: '50%', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </div>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                Cancel AMC Contract?
+              </h3>
+            </div>
+            
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: 'var(--spacing-lg)' }}>
+              {deleteMode === 'single' ? (
+                <>Are you sure you want to cancel the AMC subscription contract for <strong style={{ color: 'var(--text-main)' }}>{amcToDelete?.clientName}</strong>? This action cannot be undone.</>
+              ) : (
+                <>Are you sure you want to cancel the <strong style={{ color: 'var(--text-main)' }}>{selectedAMCs.length}</strong> selected AMC subscription contracts? This action cannot be undone.</>
+              )}
+            </p>
+
+            <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end' }}>
+              <button 
+                type="button" className="btn btn-outline" 
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setAmcToDelete(null);
+                }}
+              >
+                No, Keep
+              </button>
+              <button 
+                type="button" className="btn btn-danger" 
+                onClick={async () => {
+                  if (deleteMode === 'single') {
+                    await executeSingleDelete(amcToDelete?._id);
+                  } else {
+                    await executeBulkDelete();
+                  }
+                  setShowDeleteConfirm(false);
+                  setAmcToDelete(null);
+                }}
+                style={{ backgroundColor: 'var(--danger-color)', color: '#fff' }}
+              >
+                Yes, Cancel AMC
+              </button>
+            </div>
           </div>
         </div>
       )}
