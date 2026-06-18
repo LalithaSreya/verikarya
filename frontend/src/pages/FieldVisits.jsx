@@ -446,7 +446,7 @@ export const FieldVisits = () => {
         </p>
       </div>
 
-      {isManager && selectedVisits.length > 0 && (
+      {(isManager || isEmployee) && selectedVisits.length > 0 && (
         <div className="card" style={{
           backgroundColor: 'var(--primary-light)',
           borderColor: 'var(--primary-color)',
@@ -509,7 +509,7 @@ export const FieldVisits = () => {
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
               <h3 style={{ margin: 0 }}>On-Site Audits Schedule</h3>
-              {isManager && paginatedVisits.length > 0 && (
+              {(isManager || isEmployee) && paginatedVisits.length > 0 && (
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none', fontWeight: 600 }}>
                   <input 
                     type="checkbox" 
@@ -570,7 +570,7 @@ export const FieldVisits = () => {
                     transition: 'background-color 0.2s ease'
                   }}>
                     <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'flex-start' }}>
-                      {isManager && (
+                      {(isManager || isEmployee) && (
                         <input 
                           type="checkbox" 
                           checked={selectedVisits.includes(visit._id)}
@@ -589,7 +589,7 @@ export const FieldVisits = () => {
                             <span className={`badge badge-${visit.status}`}>
                               {visit.status}
                             </span>
-                            {isManager && (
+                            {(isManager || isEmployee) && (
                               <button 
                                 className="btn btn-outline btn-sm" 
                                 style={{ padding: '4px', borderColor: 'var(--danger-color)', color: 'var(--danger-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}

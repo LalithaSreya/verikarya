@@ -19,9 +19,9 @@ router.use(protect); // All routes protected
 
 router.post('/', authorize('manager'), createVisit);
 router.get('/', getVisits);
-router.delete('/', authorize('manager'), bulkDeleteVisits);
+router.delete('/', authorize('manager', 'employee'), bulkDeleteVisits);
 router.get('/:id', getVisitById);
-router.delete('/:id', authorize('manager'), deleteVisit);
+router.delete('/:id', authorize('manager', 'employee'), deleteVisit);
 router.post('/:id/start', authorize('employee'), startVisit);
 router.post('/:id/request-code', authorize('employee'), requestVisitCode);
 router.post('/:id/progress', authorize('employee'), saveVisitProgress);

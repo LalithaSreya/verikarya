@@ -18,9 +18,9 @@ router.use(protect); // All routes protected
 
 router.post('/', authorize('manager'), createTask);
 router.get('/', getTasks);
-router.delete('/', authorize('manager'), bulkDeleteTasks);
+router.delete('/', authorize('manager', 'employee'), bulkDeleteTasks);
 router.get('/:id', getTaskById);
-router.delete('/:id', authorize('manager'), deleteTask);
+router.delete('/:id', authorize('manager', 'employee'), deleteTask);
 router.put('/:id/status', authorize('employee'), updateTaskStatus);
 router.post('/:id/request-code', authorize('employee'), requestTaskCode);
 router.post('/:id/progress', authorize('employee'), saveTaskProgress);

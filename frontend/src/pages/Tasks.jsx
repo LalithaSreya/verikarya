@@ -341,7 +341,7 @@ export const Tasks = () => {
         </p>
       </div>
 
-      {isManager && selectedTasks.length > 0 && (
+      {(isManager || isEmployee) && selectedTasks.length > 0 && (
         <div className="card" style={{
           backgroundColor: 'var(--primary-light)',
           borderColor: 'var(--primary-color)',
@@ -404,7 +404,7 @@ export const Tasks = () => {
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-md)', flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
               <h3 style={{ margin: 0 }}>Task Register</h3>
-              {isManager && paginatedTasks.length > 0 && (
+              {(isManager || isEmployee) && paginatedTasks.length > 0 && (
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none', fontWeight: 600 }}>
                   <input 
                     type="checkbox" 
@@ -465,7 +465,7 @@ export const Tasks = () => {
                     transition: 'background-color 0.2s ease'
                   }}>
                     <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'flex-start' }}>
-                      {isManager && (
+                      {(isManager || isEmployee) && (
                         <input 
                           type="checkbox" 
                           checked={selectedTasks.includes(task._id)}
@@ -481,7 +481,7 @@ export const Tasks = () => {
                             <span className={`badge badge-${task.status.replace('_', '-')}`}>
                               {task.status.replace('_', ' ')}
                             </span>
-                            {isManager && (
+                            {(isManager || isEmployee) && (
                               <button 
                                 className="btn btn-outline btn-sm" 
                                 style={{ padding: '4px', borderColor: 'var(--danger-color)', color: 'var(--danger-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
