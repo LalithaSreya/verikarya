@@ -93,6 +93,16 @@ export const FieldVisits = () => {
       return;
     }
 
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const selectedDeadline = new Date(deadline);
+    selectedDeadline.setHours(0,0,0,0);
+
+    if (selectedDeadline < today) {
+      setFormError('Deadline cannot be in the past.');
+      return;
+    }
+
     setSubmittingVisit(true);
     try {
       const res = await api.post('/visits', {
@@ -875,6 +885,31 @@ export const FieldVisits = () => {
                   </div>
                 </div>
 
+                <div style={{ marginBottom: 'var(--spacing-md)' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem' }}
+                    onClick={() => {
+                      if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                          (position) => {
+                            setTargetLat(position.coords.latitude.toFixed(7));
+                            setTargetLng(position.coords.longitude.toFixed(7));
+                          },
+                          (error) => {
+                            alert('Error acquiring location: ' + error.message);
+                          }
+                        );
+                      } else {
+                        alert('Geolocation is not supported by this browser.');
+                      }
+                    }}
+                  >
+                    📍 Use Current Location
+                  </button>
+                </div>
+
                 <div className="form-group">
                   <label className="form-label">Client Phone for Verification Code</label>
                   <input 
@@ -893,6 +928,7 @@ export const FieldVisits = () => {
                     className="form-input"
                     value={deadline}
                     onChange={(e) => setDeadline(e.target.value)}
+                    min={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0]}
                     required
                   />
                 </div>

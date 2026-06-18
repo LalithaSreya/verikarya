@@ -9,7 +9,8 @@ const {
   bulkRegisterEmployees,
   updateEmployee,
   deleteEmployee,
-  bulkDeleteEmployees
+  bulkDeleteEmployees,
+  seedDatabase
 } = require('../controllers/authController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -25,6 +26,7 @@ router.delete('/employees', protect, authorize('manager'), bulkDeleteEmployees);
 router.put('/employees/:id', protect, authorize('manager'), updateEmployee);
 router.delete('/employees/:id', protect, authorize('manager'), deleteEmployee);
 router.put('/office-location', protect, updateOfficeLocation);
+router.post('/seed', protect, authorize('manager'), seedDatabase);
 
 module.exports = router;
 

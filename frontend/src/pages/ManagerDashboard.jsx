@@ -7,6 +7,25 @@ export const ManagerDashboard = () => {
   const [pendingReviews, setPendingReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showSeedConfirm, setShowSeedConfirm] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+
+  const handleResetSeed = async () => {
+    setSeeding(true);
+    try {
+      const res = await api.post('/auth/seed');
+      if (res.data.success) {
+        alert('Database reset and seeded successfully! Logging out to log in with seeded accounts.');
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to seed database.');
+    } finally {
+      setSeeding(false);
+      setShowSeedConfirm(false);
+    }
+  };
 
   const fetchManagerData = async () => {
     try {
@@ -56,12 +75,46 @@ export const ManagerDashboard = () => {
 
   return (
     <div>
+      {/* Twilio Simulator Mode Alert Banner */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px', 
+        padding: '12px 16px', 
+        backgroundColor: '#FEF3C7', 
+        border: '1px solid #FCD34D', 
+        borderRadius: '8px', 
+        color: '#92400E', 
+        fontSize: '0.9rem', 
+        marginBottom: 'var(--spacing-md)',
+        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+      }}>
+        <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+        <div>
+          <strong>Twilio Gateway Simulator:</strong> The system is currently running in local Simulation Mode. All verification codes and message notifications are logged directly to the backend database outbox instead of live cellular delivery. View outbox messages in the <Link to="/whatsapp-logs" style={{ textDecoration: 'underline', fontWeight: 'bold', color: 'inherit' }}>WhatsApp Logs</Link> console.
+        </div>
+      </div>
+
       <div style={{ marginBottom: 'var(--spacing-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>Manager Operations Console</h2>
           <p className="text-muted">Real-time workforce verification, audit trails, and performance monitoring.</p>
         </div>
         <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+          <button 
+            type="button" 
+            className="btn btn-outline" 
+            onClick={() => setShowSeedConfirm(true)}
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              borderColor: 'var(--danger-color)', 
+              color: 'var(--danger-color)' 
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+            Reset & Seed Test Data
+          </button>
           <Link to="/tasks" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             Create Task
@@ -294,6 +347,57 @@ export const ManagerDashboard = () => {
         </div>
 
       </div>
+
+      {/* Custom Database Seed Warning Modal */}
+      {showSeedConfirm && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div className="card" style={{
+            width: '100%', maxWidth: '450px', backgroundColor: 'var(--card-bg)',
+            borderColor: 'rgba(239, 68, 68, 0.2)', border: '1px solid var(--border-color)',
+            borderRadius: '12px', padding: 'var(--spacing-lg)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
+              <div style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger-color)',
+                width: '40px', height: '40px', borderRadius: '50%', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-main)' }}>Reset & Seed Database?</h3>
+            </div>
+            
+            <p className="text-muted" style={{ fontSize: '0.9rem', lineHeight: '1.6', marginBottom: 'var(--spacing-lg)' }}>
+              This action will <strong>permanently delete</strong> all records including users, tasks, audits, evidence, and attendance logs. 
+              The database will be restored to its default seed state. You will be logged out.
+            </p>
+
+            <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end' }}>
+              <button 
+                className="btn btn-outline" 
+                type="button" 
+                onClick={() => setShowSeedConfirm(false)} 
+                disabled={seeding}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-danger" 
+                type="button" 
+                onClick={handleResetSeed}
+                disabled={seeding}
+              >
+                {seeding ? 'Seeding...' : 'Yes, WIPE and SEED'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

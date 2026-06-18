@@ -403,6 +403,111 @@ const bulkDeleteEmployees = async (req, res) => {
   }
 };
 
+// @desc    Reset and seed database
+// @route   POST /api/auth/seed
+// @access  Private (Manager only)
+const seedDatabase = async (req, res) => {
+  try {
+    const Task = require('../models/Task');
+    const Visit = require('../models/Visit');
+    const Evidence = require('../models/Evidence');
+    const VerificationCode = require('../models/VerificationCode');
+    const Review = require('../models/Review');
+    const mongoose = require('mongoose');
+
+    // Clear existing collections
+    await User.deleteMany();
+    await Task.deleteMany();
+    await Visit.deleteMany();
+    
+    // Drop attendances collection to ensure any old unique index is cleanly removed
+    try {
+      await mongoose.connection.db.dropCollection('attendances');
+    } catch (err) {
+      // Collection might not exist yet, ignore
+    }
+
+    await Evidence.deleteMany();
+    await VerificationCode.deleteMany();
+    await Review.deleteMany();
+
+    // Create Manager
+    const manager = await User.create({
+      name: 'Jane Manager',
+      email: 'manager@verikarya.com',
+      password: 'password123',
+      role: 'manager'
+    });
+
+    // Create Employee
+    const employee = await User.create({
+      name: 'John Employee',
+      email: 'employee@verikarya.com',
+      password: 'password123',
+      role: 'employee'
+    });
+
+    // Create Sample Tasks
+    const deadlineTask1 = new Date();
+    deadlineTask1.setDate(deadlineTask1.getDate() + 3);
+    await Task.create({
+      title: 'Configure Corporate Firewall Security Policies',
+      description: 'Apply security configuration updates to the corporate firewall, review blocked outbound traffic ports, and submit configuration snapshot.',
+      priority: 'high',
+      assignedTo: employee._id,
+      assignedBy: manager._id,
+      deadline: deadlineTask1
+    });
+
+    const deadlineTask2 = new Date();
+    deadlineTask2.setDate(deadlineTask2.getDate() + 5);
+    await Task.create({
+      title: 'Audit AWS Cloud Security Configuration Groups',
+      description: 'Perform compliance checks on cloud security groups, verify database ports are not publicly exposed, and upload audit log summary.',
+      priority: 'medium',
+      assignedTo: employee._id,
+      assignedBy: manager._id,
+      deadline: deadlineTask2
+    });
+
+    // Create Sample Field Visits
+    const deadlineVisit1 = new Date();
+    deadlineVisit1.setDate(deadlineVisit1.getDate() + 2);
+    await Visit.create({
+      clientName: 'Apex Financial Services',
+      purpose: 'Conduct physical server room security control audit, verify biometric lock status, and log camera coverage coordinates.',
+      assignedTo: employee._id,
+      assignedBy: manager._id,
+      targetLocation: {
+        lat: 12.9715987,
+        lng: 77.5945627
+      },
+      deadline: deadlineVisit1
+    });
+
+    const deadlineVisit2 = new Date();
+    deadlineVisit2.setDate(deadlineVisit2.getDate() + 4);
+    await Visit.create({
+      clientName: 'Titan Solutions Group',
+      purpose: 'On-site firewall router hardware installation, configure VLAN security isolation zones, and verify gateway routing connectivity.',
+      assignedTo: employee._id,
+      assignedBy: manager._id,
+      targetLocation: {
+        lat: 12.9141,
+        lng: 77.6339
+      },
+      deadline: deadlineVisit2
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Database reset and seeded successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -413,7 +518,8 @@ module.exports = {
   bulkRegisterEmployees,
   updateEmployee,
   deleteEmployee,
-  bulkDeleteEmployees
+  bulkDeleteEmployees,
+  seedDatabase
 };
 
 

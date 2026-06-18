@@ -655,7 +655,7 @@ export const EmployeeMaster = () => {
                     value={empForm.officeLocation.lat}
                     onChange={(e) => setEmpForm({ 
                       ...empForm, 
-                      officeLocation: { ...empForm.officeLocation, lat: parseFloat(e.target.value) } 
+                      officeLocation: { ...empForm.officeLocation, lat: parseFloat(e.target.value) || '' } 
                     })}
                     required
                   />
@@ -669,11 +669,41 @@ export const EmployeeMaster = () => {
                     value={empForm.officeLocation.lng}
                     onChange={(e) => setEmpForm({ 
                       ...empForm, 
-                      officeLocation: { ...empForm.officeLocation, lng: parseFloat(e.target.value) } 
+                      officeLocation: { ...empForm.officeLocation, lng: parseFloat(e.target.value) || '' } 
                     })}
                     required
                   />
                 </div>
+              </div>
+
+              <div style={{ marginBottom: 'var(--spacing-md)' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem' }}
+                  onClick={() => {
+                    if (navigator.geolocation) {
+                      navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                          setEmpForm(prev => ({
+                            ...prev,
+                            officeLocation: {
+                              lat: parseFloat(position.coords.latitude.toFixed(7)),
+                              lng: parseFloat(position.coords.longitude.toFixed(7))
+                            }
+                          }));
+                        },
+                        (error) => {
+                          alert('Error acquiring location: ' + error.message);
+                        }
+                      );
+                    } else {
+                      alert('Geolocation is not supported by this browser.');
+                    }
+                  }}
+                >
+                  📍 Use Current Location
+                </button>
               </div>
 
               <div style={{ display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end', marginTop: 'var(--spacing-md)' }}>

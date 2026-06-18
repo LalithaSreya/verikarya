@@ -233,6 +233,26 @@ export const EmployeeDashboard = () => {
 
   return (
     <div>
+      {/* Twilio Simulator Mode Alert Banner */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px', 
+        padding: '12px 16px', 
+        backgroundColor: '#FEF3C7', 
+        border: '1px solid #FCD34D', 
+        borderRadius: '8px', 
+        color: '#92400E', 
+        fontSize: '0.9rem', 
+        marginBottom: 'var(--spacing-md)',
+        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+      }}>
+        <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+        <div>
+          <strong>Twilio Gateway Simulator:</strong> The system is currently running in local Simulation Mode. All verification codes and message notifications are logged directly to the backend database outbox instead of live cellular delivery.
+        </div>
+      </div>
+
       <div style={{ marginBottom: 'var(--spacing-lg)' }}>
         <h2>Welcome to VeriKarya</h2>
         <p className="text-muted">Track your attendance, manage assigned tasks, and submit on-site audit verification proofs.</p>

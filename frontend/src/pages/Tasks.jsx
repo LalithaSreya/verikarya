@@ -84,6 +84,16 @@ export const Tasks = () => {
       return;
     }
 
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const selectedDeadline = new Date(deadline);
+    selectedDeadline.setHours(0,0,0,0);
+
+    if (selectedDeadline < today) {
+      setFormError('Deadline cannot be in the past.');
+      return;
+    }
+
     setSubmittingTask(true);
     try {
       const res = await api.post('/tasks', {
@@ -763,6 +773,7 @@ export const Tasks = () => {
                       className="form-input"
                       value={deadline}
                       onChange={(e) => setDeadline(e.target.value)}
+                      min={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0]}
                       required
                     />
                   </div>
